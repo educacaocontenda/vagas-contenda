@@ -617,11 +617,11 @@
       if (!dados.ok) {
 
         mostrarMensagem(
-          "mensagemDecisao",
-          dados.erro || dados.mensagem ||
-            "Não foi possível confirmar a inscrição.",
-          "erro"
-        );
+  "mensagemDecisao",
+  dados.error || dados.erro || dados.mensagem ||
+    "Não foi possível confirmar a inscrição.",
+  "erro"
+);
 
         return;
       }
