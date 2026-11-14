@@ -218,9 +218,8 @@
     <h2>Consulta de dados</h2>
 
     <p class="descricao">
-      Informe seu CPF para consultar os dados funcionais
-      e verificar sua identificação na relação de
-      classificação do Concurso de Remoção.
+     Para realizar sua inscrição ou consultar sua inscrição
+  no Concurso de Remoção, informe seu CPF no campo abaixo.
     </p>
 
     <form id="formConsulta">
@@ -241,7 +240,7 @@
         class="btn-consultar"
         id="btnConsultar"
       >
-        Consultar meus dados
+        Continuar
       </button>
     </form>
 
@@ -450,7 +449,7 @@
           mostrarMensagem(
             "mensagemConsulta",
             dados.erro || dados.mensagem ||
-              "Professor não localizado na matriz.",
+              "CPF não encontrado. Verifique se o número informado está correto e tente novamente.",
             "erro"
           );
           return;
