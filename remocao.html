@@ -3,27 +3,11 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>
-    Concurso de Remoção - Educação Infantil | Contenda
-  </title>
+  <title>Inscrição - Concurso de Remoção | Contenda</title>
 
   <style>
-    :root {
-      --azul: #124b91;
-      --azul-escuro: #103464;
-      --fundo: #f3f6fa;
-      --branco: #ffffff;
-      --texto: #1f2937;
-      --cinza: #64748b;
-      --borda: #dce3ec;
-      --verde: #047857;
-      --vermelho: #b91c1c;
-      --amarelo: #92400e;
-    }
-
     * {
       box-sizing: border-box;
     }
@@ -31,300 +15,189 @@
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
-      background: var(--fundo);
-      color: var(--texto);
+      background: #f1f5f9;
+      color: #243247;
     }
 
     header {
-      background: linear-gradient(
-        110deg,
-        var(--azul-escuro),
-        var(--azul)
-      );
+      background: #173b65;
       color: white;
       text-align: center;
-      padding: 30px 15px;
+      padding: 30px 16px;
     }
 
     header h1 {
-      margin: 0;
+      margin: 0 0 10px;
       font-size: 25px;
     }
 
     header p {
-      margin: 8px 0 0;
+      margin: 5px 0;
       font-size: 14px;
-      opacity: .95;
     }
 
     main {
-      max-width: 950px;
-      margin: 25px auto;
-      padding: 0 15px 35px;
+      max-width: 720px;
+      margin: 28px auto;
+      padding: 0 16px;
     }
 
     .card {
       background: white;
-      border: 1px solid var(--borda);
-      border-radius: 14px;
-      padding: 23px;
-      margin-bottom: 18px;
-      box-shadow: 0 3px 12px rgba(0,0,0,.04);
+      border-radius: 12px;
+      padding: 28px;
+      margin-bottom: 20px;
+      box-shadow: 0 3px 14px rgba(0,0,0,0.07);
     }
 
     h2 {
       margin-top: 0;
-      font-size: 19px;
-      color: var(--azul-escuro);
+      font-size: 21px;
+      color: #173b65;
     }
 
-    h3 {
-      font-size: 16px;
-      color: var(--azul-escuro);
+    .descricao {
+      color: #64748b;
+      font-size: 14px;
+      line-height: 1.6;
     }
 
     label {
       display: block;
       font-weight: bold;
-      font-size: 14px;
-      margin-bottom: 7px;
+      margin-bottom: 8px;
     }
 
-    input, select {
+    input {
       width: 100%;
-      padding: 12px;
-      border: 1px solid var(--borda);
-      border-radius: 9px;
-      font-size: 15px;
-      background: white;
+      padding: 14px;
+      font-size: 17px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    input:focus {
+      outline: 2px solid #3b82f6;
+      border-color: transparent;
     }
 
     button {
-      border: 0;
-      border-radius: 9px;
-      padding: 12px 18px;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
       font-weight: bold;
-      font-size: 14px;
       cursor: pointer;
-      transition: opacity .2s;
-    }
-
-    button:hover {
-      opacity: .9;
     }
 
     button:disabled {
-      opacity: .55;
+      opacity: 0.55;
       cursor: not-allowed;
     }
 
-    .btn-azul {
-      background: var(--azul);
+    .btn-consultar {
+      background: #173b65;
       color: white;
     }
 
-    .btn-verde {
-      background: var(--verde);
+    .btn-sim {
+      background: #167347;
       color: white;
     }
 
-    .btn-cinza {
-      background: #e7edf5;
-      color: #25354b;
-    }
-
-    .btn-vermelho {
-      background: var(--vermelho);
-      color: white;
+    .btn-nao {
+      background: #e2e8f0;
+      color: #334155;
     }
 
     .botoes {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 17px;
-    }
-
-    .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 15px;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .dados {
+      display: grid;
+      gap: 12px;
+      margin-top: 20px;
     }
 
     .campo {
-      padding: 11px;
       background: #f8fafc;
-      border: 1px solid #edf1f5;
-      border-radius: 9px;
+      padding: 13px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
     }
 
-    .rotulo {
+    .campo span {
+      display: block;
       font-size: 12px;
-      color: var(--cinza);
-      margin-bottom: 6px;
+      color: #64748b;
+      margin-bottom: 5px;
     }
 
-    .valor {
-      font-weight: bold;
+    .campo strong {
       font-size: 15px;
       overflow-wrap: anywhere;
     }
 
+    .pergunta {
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 17px;
+      font-weight: bold;
+      text-align: center;
+    }
+
     .mensagem {
-      padding: 13px;
-      border-radius: 9px;
-      margin-top: 15px;
+      display: none;
+      margin-top: 16px;
+      padding: 14px;
+      border-radius: 8px;
       font-size: 14px;
       line-height: 1.5;
     }
 
-    .info {
-      background: #eaf2ff;
-      color: #17467e;
-    }
-
     .sucesso {
-      background: #e6f7ef;
-      color: #065f46;
+      display: block;
+      background: #dcfce7;
+      color: #166534;
     }
 
     .erro {
-      background: #feecec;
+      display: block;
+      background: #fee2e2;
       color: #991b1b;
     }
 
-    .alerta {
-      background: #fff4db;
-      color: #92400e;
+    .aviso {
+      display: block;
+      background: #eff6ff;
+      color: #1e40af;
     }
 
     .oculto {
-      display: none !important;
-    }
-
-    .etapa {
-      text-align: center;
-      background: #edf4ff;
-      border: 1px solid #d6e5ff;
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 17px;
-    }
-
-    .etapa strong {
-      font-size: 20px;
-      color: var(--azul);
-    }
-
-    .vaga {
-      border: 1px solid var(--borda);
-      border-radius: 10px;
-      padding: 13px;
-      margin-top: 10px;
-      cursor: pointer;
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
-
-    .vaga:hover {
-      border-color: var(--azul);
-      background: #f8fbff;
-    }
-
-    .vaga input {
-      width: auto;
-      transform: scale(1.2);
-    }
-
-    .vaga.selecionada {
-      border: 2px solid var(--azul);
-      background: #eef5ff;
-    }
-
-    .vaga strong {
-      display: block;
-      font-size: 15px;
-    }
-
-    .vaga small {
-      color: var(--cinza);
-      font-size: 12px;
-    }
-
-    .separador {
-      height: 1px;
-      background: var(--borda);
-      margin: 20px 0;
-    }
-
-    .centralizado {
-      text-align: center;
-    }
-
-    .observacao {
-      color: var(--cinza);
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .protocolo {
-      font-size: 18px;
-      color: var(--azul);
-      font-weight: bold;
-      overflow-wrap: anywhere;
+      display: none;
     }
 
     footer {
       text-align: center;
-      font-size: 12px;
-      color: var(--cinza);
       padding: 20px;
+      color: #64748b;
+      font-size: 12px;
     }
 
-    @media(max-width:650px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
-
+    @media (max-width: 480px) {
       .card {
-        padding: 17px;
+        padding: 20px;
       }
 
-      header h1 {
-        font-size: 21px;
-      }
-
-      .botoes button {
-        width: 100%;
-      }
-    }
-
-    @media print {
-      header,
-      footer,
-      #cardLogin,
-      #cardCandidato,
-      #cardAguardar,
-      #cardEscolha,
-      #cardMensagem,
       .botoes {
-        display: none !important;
-      }
-
-      body {
-        background: white;
-      }
-
-      main {
-        margin: 0;
-        max-width: 100%;
-      }
-
-      #cardComprovante {
-        display: block !important;
-        box-shadow: none;
-        border: 1px solid #aaa;
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -334,1179 +207,401 @@
 
 <header>
   <h1>Concurso de Remoção</h1>
-  <p>
-    Educação Infantil - Rede Municipal de Ensino de Contenda
-  </p>
-  <p>
-    Secretaria Municipal de Educação, Cultura,
-    Esporte e Turismo
-  </p>
+  <p>Inscrição para participação</p>
+  <p>Secretaria Municipal de Educação, Cultura, Esporte e Turismo</p>
+  <p>Contenda - Paraná</p>
 </header>
 
 <main>
 
-  <!-- ACESSO POR CPF -->
-  <section class="card" id="cardLogin">
+  <section class="card">
+    <h2>Consulta de dados</h2>
 
-    <h2>Consulta ao Processo de Remoção</h2>
-
-    <p>
-      Informe seu CPF para consultar sua inscrição,
-      classificação e situação no processo de remoção.
+    <p class="descricao">
+      Informe seu CPF para consultar os dados funcionais
+      e verificar sua identificação na relação de
+      classificação do Concurso de Remoção.
     </p>
 
-    <label for="cpfInput">CPF do candidato</label>
+    <form id="formConsulta">
+      <label for="cpf">CPF do professor</label>
 
-    <input
-      type="text"
-      id="cpfInput"
-      placeholder="000.000.000-00"
-      maxlength="14"
-      inputmode="numeric"
-      autocomplete="off"
-    >
+      <input
+        type="text"
+        id="cpf"
+        inputmode="numeric"
+        maxlength="14"
+        autocomplete="off"
+        placeholder="000.000.000-00"
+        required
+      >
 
-    <div class="botoes">
       <button
-        type="button"
-        class="btn-azul"
+        type="submit"
+        class="btn-consultar"
         id="btnConsultar"
       >
-        Consultar minha remoção
+        Consultar meus dados
       </button>
-    </div>
+    </form>
 
-    <div id="msgLogin"></div>
-
+    <div id="mensagemConsulta" class="mensagem"></div>
   </section>
 
-  <!-- DADOS DO CANDIDATO -->
-  <section
-    class="card oculto"
-    id="cardCandidato"
-  >
+  <section id="secaoDados" class="card oculto">
 
-    <h2>Dados do Candidato</h2>
+    <h2>Dados do professor</h2>
 
-    <div class="grid">
-
-      <div class="campo">
-        <div class="rotulo">Nome</div>
-        <div class="valor" id="nome"></div>
-      </div>
-
-      <div class="campo">
-        <div class="rotulo">CPF</div>
-        <div class="valor" id="cpf"></div>
-      </div>
-
-      <div class="campo">
-        <div class="rotulo">
-          Classificação original
-        </div>
-        <div class="valor" id="codigo"></div>
-      </div>
-
-      <div class="campo">
-        <div class="rotulo">
-          Data de admissão
-        </div>
-        <div class="valor" id="admissao"></div>
-      </div>
-
-      <div class="campo">
-        <div class="rotulo">
-          Lotação original
-        </div>
-        <div class="valor" id="lotacaoOriginal"></div>
-      </div>
-
-      <div class="campo">
-        <div class="rotulo">
-          Lotação atual
-        </div>
-        <div class="valor" id="lotacaoAtual"></div>
-      </div>
-
-      <div class="campo">
-        <div class="rotulo">
-          Situação
-        </div>
-        <div class="valor" id="situacao"></div>
-      </div>
-
-      <div class="campo">
-        <div class="rotulo">
-          Etapa do candidato
-        </div>
-        <div class="valor" id="etapaCandidato"></div>
-      </div>
-
-    </div>
-
-    <div class="botoes">
-      <button
-        class="btn-cinza"
-        type="button"
-        id="btnAtualizar"
-      >
-        Atualizar situação
-      </button>
-    </div>
-
-  </section>
-
-  <!-- AGUARDANDO VEZ -->
-  <section
-    class="card oculto"
-    id="cardAguardar"
-  >
-
-    <h2>Situação da Escolha</h2>
-
-    <div class="etapa">
-      Etapa atualmente aberta
-      <br>
-      <strong id="etapaAtiva">-</strong>
-    </div>
-
-    <div
-      class="mensagem info"
-      id="mensagemAguardar"
-    ></div>
-
-    <p class="observacao">
-      A situação é atualizada automaticamente.
-      Você também pode utilizar o botão
-      "Atualizar situação".
+    <p class="descricao">
+      Confira atentamente as informações apresentadas.
     </p>
 
-  </section>
+    <div class="dados">
 
-  <!-- ESCOLHA DE VAGA -->
-  <section
-    class="card oculto"
-    id="cardEscolha"
-  >
+      <div class="campo">
+        <span>Código de classificação</span>
+        <strong id="codigo">-</strong>
+      </div>
 
-    <h2>Sua vez de escolher</h2>
+      <div class="campo">
+        <span>Nome completo</span>
+        <strong id="nome">-</strong>
+      </div>
 
-    <div class="mensagem sucesso">
-      Sua classificação foi liberada para escolha
-      nesta etapa.
-    </div>
+      <div class="campo">
+        <span>CPF</span>
+        <strong id="cpfExibicao">-</strong>
+      </div>
 
-    <div class="separador"></div>
+      <div class="campo">
+        <span>Data de admissão</span>
+        <strong id="admissao">-</strong>
+      </div>
 
-    <h3>Vagas disponíveis</h3>
-
-    <p class="observacao">
-      Selecione uma das vagas apresentadas.
-      Cada vaga corresponde a uma unidade disponível
-      na instituição.
-    </p>
-
-    <div id="listaVagas"></div>
-
-    <div class="separador"></div>
-
-    <h3>Decisão do candidato</h3>
-
-    <p>
-      Você poderá escolher uma vaga, manter sua
-      lotação atual ou avançar para a próxima etapa,
-      quando permitido.
-    </p>
-
-    <div class="botoes">
-
-      <button
-        type="button"
-        class="btn-verde"
-        id="btnEscolher"
-      >
-        Confirmar vaga selecionada
-      </button>
-
-      <button
-        type="button"
-        class="btn-cinza"
-        id="btnManter"
-      >
-        Manter minha lotação
-      </button>
-
-      <button
-        type="button"
-        class="btn-azul"
-        id="btnProxima"
-      >
-        Avançar para próxima etapa
-      </button>
+      <div class="campo">
+        <span>Lotação atual</span>
+        <strong id="lotacao">-</strong>
+      </div>
 
     </div>
 
-    <div id="msgEscolha"></div>
+    <div id="areaDecisao">
 
-  </section>
+      <div class="pergunta">
+        Você deseja participar do Concurso de Remoção?
+      </div>
 
-  <!-- MENSAGEM FINAL -->
-  <section
-    class="card oculto"
-    id="cardMensagem"
-  >
-
-    <h2>Resultado da decisão</h2>
-
-    <div
-      id="mensagemFinal"
-      class="mensagem sucesso"
-    ></div>
-
-  </section>
-
-  <!-- COMPROVANTE -->
-  <section
-    class="card oculto"
-    id="cardComprovante"
-  >
-
-    <div class="centralizado">
-      <h2>Comprovante de Remoção</h2>
-
-      <p>
-        Rede Municipal de Ensino de Contenda
+      <p class="descricao" style="text-align:center">
+        Ao confirmar sua participação, seus dados serão
+        registrados na relação de professores inscritos.
+        A escolha das vagas ocorrerá posteriormente.
       </p>
-    </div>
 
-    <div class="separador"></div>
+      <div class="botoes">
 
-    <div class="grid">
+        <button
+          type="button"
+          class="btn-sim"
+          id="btnSim"
+        >
+          Sim, desejo participar
+        </button>
 
-      <div class="campo">
-        <div class="rotulo">Candidato</div>
-        <div class="valor" id="compNome"></div>
-      </div>
+        <button
+          type="button"
+          class="btn-nao"
+          id="btnNao"
+        >
+          Não desejo participar
+        </button>
 
-      <div class="campo">
-        <div class="rotulo">CPF</div>
-        <div class="valor" id="compCpf"></div>
-      </div>
-
-      <div class="campo">
-        <div class="rotulo">Classificação</div>
-        <div class="valor" id="compCodigo"></div>
-      </div>
-
-      <div class="campo">
-        <div class="rotulo">Etapa</div>
-        <div class="valor" id="compEtapa"></div>
-      </div>
-
-      <div class="campo">
-        <div class="rotulo">Lotação original</div>
-        <div
-          class="valor"
-          id="compLotacaoOriginal"
-        ></div>
-      </div>
-
-      <div class="campo">
-        <div class="rotulo">Lotação atual</div>
-        <div
-          class="valor"
-          id="compLotacaoAtual"
-        ></div>
-      </div>
-
-      <div class="campo">
-        <div class="rotulo">Decisão</div>
-        <div class="valor" id="compDecisao"></div>
-      </div>
-
-      <div class="campo">
-        <div class="rotulo">Data da decisão</div>
-        <div class="valor" id="compData"></div>
       </div>
 
     </div>
 
-    <div class="separador"></div>
-
-    <div class="centralizado">
-      <div class="rotulo">
-        Número do comprovante
-      </div>
-
-      <div
-        class="protocolo"
-        id="compProtocolo"
-      ></div>
-    </div>
-
-    <p class="observacao">
-      Este comprovante corresponde às informações
-      registradas no sistema de remoção.
-    </p>
-
-    <div class="botoes">
-      <button
-        type="button"
-        class="btn-azul"
-        id="btnImprimir"
-      >
-        Imprimir comprovante
-      </button>
-    </div>
+    <div id="mensagemDecisao" class="mensagem"></div>
 
   </section>
 
 </main>
 
 <footer>
-  Secretaria Municipal de Educação, Cultura,
-  Esporte e Turismo de Contenda
+  Prefeitura Municipal de Contenda
+  <p>Concurso de Remoção - Inscrição</p>
 </footer>
-
-<!--
-  ENVIO DE FORMULÁRIO PARA APPS SCRIPT
-
-  O iframe permite enviar um POST de outra origem,
-  mas NÃO permite ler sua resposta.
-
-  Portanto, o sistema NÃO considera o envio como
-  sucesso até confirmar o resultado por consulta.
--->
-
-<iframe
-  name="frameEnvio"
-  id="frameEnvio"
-  style="display:none"
-></iframe>
-
-<form
-  id="formEnvio"
-  method="POST"
-  target="frameEnvio"
-  style="display:none"
->
-  <input
-    type="hidden"
-    name="payload"
-    id="payloadEnvio"
-  >
-</form>
 
 <script>
 
-  /*************************************************
-   CONFIGURAÇÃO
-  **************************************************/
+  // ENDEREÇO DO WEB APP DO GOOGLE APPS SCRIPT
+  // Confira se esta é a implantação atualizada.
 
-  // SUBSTITUA PELA URL /exec DO SEU APPS SCRIPT.
- const WEBAPP_URL =
-  "https://script.google.com/macros/s/AKfycbxkzNX9GE6MOsRmzjIBVrDvGKQC1HF4VAeJzl9-XTG64Iw_ChDvDNGwMeBpBuz8kC3E/exec";
+  const API_URL =
+    "https://script.google.com/macros/s/AKfycbxkzNX9GE6MOsRmzjIBVrDvGKQC1HF4VAeJzl9-XTG64Iw_ChDvDNGwMeBpBuz8kC3E/exec";
 
-  const INTERVALO_ATUALIZACAO = 7000;
+  let cpfConsultado = "";
+  let inscricaoEmAndamento = false;
 
-  let cpfAtual = "";
-  let candidatoAtual = null;
-  let situacaoAtual = null;
-  let enviando = false;
-  let consultaEmAndamento = false;
-  let atualizador = null;
-
-  // Identificador mantido para tentativas repetidas
-  // da mesma decisão.
-  let operacaoPendente = null;
-
-  const $ = id =>
-    document.getElementById(id);
-
-  /*************************************************
-   AUXILIARES
-  **************************************************/
+  const $ = id => document.getElementById(id);
 
   function somenteNumeros(valor) {
-    return String(valor || "")
-      .replace(/\D/g, "");
+    return String(valor || "").replace(/\D/g, "");
   }
 
-  function formatarCpf(valor) {
-    const d = somenteNumeros(valor);
+  function formatarCPF(valor) {
+    const n = somenteNumeros(valor).slice(0, 11);
 
-    if (d.length !== 11) return valor;
-
-    return d.replace(
-      /(\d{3})(\d{3})(\d{3})(\d{2})/,
-      "$1.$2.$3-$4"
-    );
+    return n
+      .replace(/^(\d{3})(\d)/, "$1.$2")
+      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/\.(\d{3})(\d)/, ".$1-$2");
   }
 
-  function mostrar(id) {
-    $(id).classList.remove("oculto");
-  }
+  function mostrarMensagem(id, texto, tipo) {
+    const elemento = $(id);
 
-  function esconder(id) {
-    $(id).classList.add("oculto");
-  }
-
-  function mensagem(id, texto, tipo = "info") {
-    const el = $(id);
-
-    el.innerHTML = "";
-
-    const div = document.createElement("div");
-
-    div.className = "mensagem " + tipo;
-    div.textContent = texto;
-
-    el.appendChild(div);
+    elemento.textContent = texto;
+    elemento.className = "mensagem " + tipo;
   }
 
   function limparMensagem(id) {
-    $(id).innerHTML = "";
+    const elemento = $(id);
+
+    elemento.textContent = "";
+    elemento.className = "mensagem";
   }
 
-  function validarConfiguracao() {
-    if (
-      !WEBAPP_URL.startsWith(
-        "https://script.google.com/macros/s/"
-      ) ||
-      !WEBAPP_URL.endsWith("/exec")
-    ) {
-      throw new Error(
-        "Configure a URL /exec do Apps Script."
-      );
-    }
+  function bloquearDecisao() {
+    $("areaDecisao").classList.add("oculto");
   }
 
-  function gerarOperacaoId() {
-    if (
-      window.crypto &&
-      typeof window.crypto.randomUUID ===
-        "function"
-    ) {
-      return window.crypto.randomUUID();
-    }
-
-    return (
-      "OP-" +
-      Date.now() +
-      "-" +
-      Math.random().toString(36).slice(2)
-    );
+  function liberarDecisao() {
+    $("areaDecisao").classList.remove("oculto");
   }
 
-  function textoDecisao(decisao) {
-    if (decisao === "ESCOLHER_VAGA") {
-      return "Remoção para vaga escolhida";
-    }
-
-    if (decisao === "MANTER") {
-      return "Manutenção da lotação";
-    }
-
-    if (decisao === "PROXIMA_ETAPA") {
-      return "Avanço para próxima etapa";
-    }
-
-    return decisao || "-";
-  }
-
-  /*************************************************
-   COMUNICAÇÃO COM O APPS SCRIPT
-  **************************************************/
-
-  async function consultarServidor(cpf) {
-    validarConfiguracao();
-
-    const url = new URL(WEBAPP_URL);
-
-    url.searchParams.set(
-      "page", "remocao"
-    );
-
-    url.searchParams.set(
-      "action", "consultar"
-    );
-
-    url.searchParams.set(
-      "cpf", cpf
-    );
-
-    url.searchParams.set(
-      "_", String(Date.now())
-    );
-
-    const resposta = await fetch(
-      url.toString(),
-      {
-        method: "GET",
-        redirect: "follow",
-        cache: "no-store"
-      }
-    );
-
-    if (!resposta.ok) {
-      throw new Error(
-        "Não foi possível consultar o servidor."
-      );
-    }
-
-    const dados = await resposta.json();
-
-    if (!dados.ok) {
-      throw new Error(
-        dados.error ||
-        "Falha na consulta."
-      );
-    }
-
-    return dados;
-  }
-
-  function enviarPost(dados) {
-    validarConfiguracao();
-
-    const form = $("formEnvio");
-
-    form.action = WEBAPP_URL;
-
-    $("payloadEnvio").value =
-      JSON.stringify(dados);
-
-    form.submit();
-
-    // Importante: o POST não retorna confirmação
-    // acessível para o JavaScript desta página.
-    // A confirmação será verificada por consulta.
-  }
-
-  /*************************************************
-   CONSULTA DO CANDIDATO
-  **************************************************/
-
-  async function iniciarConsulta() {
-    const cpf = somenteNumeros(
-      $("cpfInput").value
-    );
-
-    if (cpf.length !== 11) {
-      mensagem(
-        "msgLogin",
-        "Informe um CPF com 11 dígitos.",
-        "erro"
-      );
-      return;
-    }
-
-    cpfAtual = cpf;
-
-    $("btnConsultar").disabled = true;
-
-    mensagem(
-      "msgLogin",
-      "Consultando inscrição...",
-      "info"
-    );
-
-    try {
-      await atualizarSituacao();
-
-      limparMensagem("msgLogin");
-
-      iniciarAtualizacaoAutomatica();
-
-    } catch (erro) {
-      mensagem(
-        "msgLogin",
-        erro.message,
-        "erro"
-      );
-
-    } finally {
-      $("btnConsultar").disabled = false;
-    }
-  }
-
-  async function atualizarSituacao() {
-    if (
-      !cpfAtual ||
-      consultaEmAndamento ||
-      enviando
-    ) return;
-
-    consultaEmAndamento = true;
-
-    try {
-      const dados = await consultarServidor(
-        cpfAtual
-      );
-
-      situacaoAtual = dados;
-      candidatoAtual = dados.candidato;
-
-      preencherCandidato(dados.candidato);
-      atualizarInterface(dados);
-
-      return dados;
-
-    } finally {
-      consultaEmAndamento = false;
-    }
-  }
-
-  function preencherCandidato(c) {
-    $("nome").textContent =
-      c.nome || "";
-
-    $("cpf").textContent =
-      c.cpf || "";
-
+  function preencherDados(candidato) {
     $("codigo").textContent =
-      c.codigo || "";
+      candidato.codigo ?? "-";
+
+    $("nome").textContent =
+      candidato.nome ?? "-";
+
+    $("cpfExibicao").textContent =
+      candidato.cpf ?? "-";
 
     $("admissao").textContent =
-      c.dataAdmissao || "";
+      candidato.dataAdmissao ?? "-";
 
-    $("lotacaoOriginal").textContent =
-      c.lotacaoOriginal || "";
-
-    $("lotacaoAtual").textContent =
-      c.lotacaoAtual || "";
-
-    $("situacao").textContent =
-      c.situacao || "";
-
-    $("etapaCandidato").textContent =
-      c.etapa || "";
-
-    mostrar("cardCandidato");
+    $("lotacao").textContent =
+      candidato.lotacaoAtual ?? "-";
   }
 
-  /*************************************************
-   ATUALIZAÇÃO DAS TELAS
-  **************************************************/
-
-  function atualizarInterface(dados) {
-    esconder("cardAguardar");
-    esconder("cardEscolha");
-    esconder("cardMensagem");
-    esconder("cardComprovante");
-
-    const c = dados.candidato;
-
-    if (
-      String(c.situacao).toUpperCase() ===
-      "CONFIRMADO"
-    ) {
-      mostrarResultadoConfirmado(c);
-      return;
-    }
-
-    if (dados.minhaVez) {
-      mostrarEscolha(dados);
-      return;
-    }
-
-    mostrarAguardando(dados);
-  }
-
-  function mostrarAguardando(dados) {
-    mostrar("cardAguardar");
-
-    $("etapaAtiva").textContent =
-      dados.etapaAtiva > 0
-        ? dados.etapaAtiva + "ª etapa"
-        : "Aguardando abertura";
-
-    $("mensagemAguardar").textContent =
-      dados.mensagem ||
-      "Aguardando sua vez.";
-
-    if (
-      dados.candidato.etapa >
-      dados.etapaAtiva
-    ) {
-      $("mensagemAguardar").textContent =
-        "Você optou por avançar e está " +
-        "aguardando a abertura da " +
-        dados.candidato.etapa +
-        "ª etapa.";
-    }
-  }
-
-  function mostrarEscolha(dados) {
-    mostrar("cardEscolha");
-
-    preencherVagas(dados.vagas || []);
-
-    const etapa = Number(
-      dados.etapaAtiva
-    );
-
-    if (etapa >= 3) {
-      esconder("btnProxima");
-    } else {
-      mostrar("btnProxima");
-    }
-  }
-
-  function preencherVagas(vagas) {
-    const container = $("listaVagas");
-
-    container.innerHTML = "";
-
-    if (!vagas.length) {
-      mensagem(
-        "listaVagas",
-        "Não existem vagas disponíveis " +
-        "neste momento.",
-        "alerta"
-      );
-
-      $("btnEscolher").disabled = true;
-      return;
-    }
-
-    $("btnEscolher").disabled = false;
-
-    vagas.forEach(vaga => {
-      const label = document.createElement(
-        "label"
-      );
-
-      label.className = "vaga";
-
-      const radio = document.createElement(
-        "input"
-      );
-
-      radio.type = "radio";
-      radio.name = "vaga";
-      radio.value = vaga.idVaga;
-
-      const bloco = document.createElement(
-        "div"
-      );
-
-      const nome = document.createElement(
-        "strong"
-      );
-
-      nome.textContent = vaga.escola;
-
-      const identificador =
-        document.createElement("small");
-
-      identificador.textContent =
-        "Identificação da vaga: " +
-        vaga.idVaga;
-
-      bloco.appendChild(nome);
-      bloco.appendChild(identificador);
-
-      label.appendChild(radio);
-      label.appendChild(bloco);
-
-      radio.addEventListener(
-        "change",
-        () => {
-          document.querySelectorAll(
-            ".vaga"
-          ).forEach(el => {
-            el.classList.remove(
-              "selecionada"
-            );
-          });
-
-          label.classList.add(
-            "selecionada"
-          );
-        }
-      );
-
-      container.appendChild(label);
-    });
-  }
-
-  /*************************************************
-   REGISTRO DE DECISÕES
-  **************************************************/
-
-  function bloquearBotoes(bloquear) {
-    [
-      "btnEscolher",
-      "btnManter",
-      "btnProxima",
-      "btnAtualizar"
-    ].forEach(id => {
-      $(id).disabled = bloquear;
-    });
-  }
-
-  async function confirmarDecisao(
-    decisao,
-    idVaga = ""
-  ) {
-    if (enviando) return;
-
-    if (
-      !situacaoAtual ||
-      !situacaoAtual.minhaVez
-    ) {
-      mensagem(
-        "msgEscolha",
-        "Sua vez ainda não está liberada.",
-        "erro"
-      );
-      return;
-    }
-
-    const etapa = Number(
-      situacaoAtual.etapaAtiva
-    );
-
-    if (
-      decisao === "PROXIMA_ETAPA" &&
-      etapa === 3
-    ) {
-      mensagem(
-        "msgEscolha",
-        "Não é possível avançar após " +
-        "a terceira etapa.",
-        "erro"
-      );
-      return;
-    }
-
-    let pergunta = "";
-
-    if (decisao === "ESCOLHER_VAGA") {
-      pergunta =
-        "Confirma sua remoção para a " +
-        "vaga selecionada?";
-    }
-
-    if (decisao === "MANTER") {
-      pergunta =
-        "Confirma que deseja manter " +
-        "sua lotação atual e encerrar " +
-        "sua participação?";
-    }
-
-    if (decisao === "PROXIMA_ETAPA") {
-      pergunta =
-        "Confirma que deseja avançar " +
-        "para a próxima etapa?";
-    }
-
-    if (!window.confirm(pergunta)) {
-      return;
-    }
-
-    const operacaoId = gerarOperacaoId();
-
-    operacaoPendente = {
-      page: "remocao",
-      action: "decidir",
-      cpf: cpfAtual,
-      etapa: etapa,
-      decisao: decisao,
-      idVaga: idVaga,
-      operacaoId: operacaoId
-    };
-
-    enviando = true;
-    bloquearBotoes(true);
-
-    mensagem(
-      "msgEscolha",
-      "Enviando sua decisão. Aguarde " +
-      "a confirmação do servidor...",
-      "info"
-    );
-
-    try {
-      enviarPost(operacaoPendente);
-
-      // Aguardar antes de consultar o resultado.
-      await new Promise(resolve =>
-        setTimeout(resolve, 2500)
-      );
-
-      let confirmado = false;
-
-      for (let tentativa = 0;
-           tentativa < 8;
-           tentativa++) {
-
-        const dados = await consultarServidor(
-          cpfAtual
-        );
-
-        const c = dados.candidato;
-
-        const idRegistrado =
-          String(
-            c.operacaoId || ""
-          );
-
-        // O Code.gs anterior não devolve
-        // operacaoId na consulta.
-        // Portanto verificamos a alteração
-        // de etapa ou o estado confirmado.
-        if (
-          decisao === "PROXIMA_ETAPA" &&
-          Number(c.etapa) === etapa + 1 &&
-          c.tipoDecisao === "PROXIMA_ETAPA"
-        ) {
-          confirmado = true;
-        }
-
-        if (
-          decisao !== "PROXIMA_ETAPA" &&
-          String(c.situacao).toUpperCase()
-            === "CONFIRMADO" &&
-          c.tipoDecisao === decisao
-        ) {
-          confirmado = true;
-        }
-
-        if (confirmado) {
-          situacaoAtual = dados;
-          candidatoAtual = c;
-
-          operacaoPendente = null;
-
-          preencherCandidato(c);
-          atualizarInterface(dados);
-
-          break;
-        }
-
-        await new Promise(resolve =>
-          setTimeout(resolve, 1500)
-        );
-      }
-
-      if (!confirmado) {
-        mensagem(
-          "msgEscolha",
-          "Não foi possível confirmar " +
-          "o registro no servidor. " +
-          "Não envie outra decisão. " +
-          "Atualize a consulta e " +
-          "verifique sua situação.",
-          "alerta"
-        );
-      }
-
-    } catch (erro) {
-      mensagem(
-        "msgEscolha",
-        "Falha na comunicação: " +
-        erro.message +
-        ". Consulte sua situação " +
-        "antes de tentar novamente.",
-        "erro"
-      );
-
-    } finally {
-      enviando = false;
-      bloquearBotoes(false);
-    }
-  }
-
-  /*************************************************
-   RESULTADO E COMPROVANTE
-  **************************************************/
-
-  function mostrarResultadoConfirmado(c) {
-    mostrar("cardMensagem");
-
-    const texto =
-      c.tipoDecisao === "MANTER"
-        ? "Sua decisão foi registrada. " +
-          "Você manteve sua lotação atual."
-        : "Sua remoção foi registrada " +
-          "para " + c.lotacaoAtual + ".";
-
-    $("mensagemFinal").textContent = texto;
-
-    if (c.comprovanteId) {
-      preencherComprovante(c);
-      mostrar("cardComprovante");
-    }
-  }
-
-  function preencherComprovante(c) {
-    $("compNome").textContent =
-      c.nome || "";
-
-    $("compCpf").textContent =
-      c.cpf || "";
-
-    $("compCodigo").textContent =
-      c.codigo || "";
-
-    $("compEtapa").textContent =
-      c.etapa || "";
-
-    $("compLotacaoOriginal").textContent =
-      c.lotacaoOriginal || "";
-
-    $("compLotacaoAtual").textContent =
-      c.lotacaoAtual || "";
-
-    $("compDecisao").textContent =
-      textoDecisao(c.tipoDecisao);
-
-    $("compData").textContent =
-      c.dataDecisao || "";
-
-    $("compProtocolo").textContent =
-      c.comprovanteId || "";
-  }
-
-  /*************************************************
-   ATUALIZAÇÃO AUTOMÁTICA
-  **************************************************/
-
-  function iniciarAtualizacaoAutomatica() {
-    if (atualizador) {
-      clearInterval(atualizador);
-    }
-
-    atualizador = setInterval(
-      async () => {
-        if (
-          !cpfAtual ||
-          enviando ||
-          consultaEmAndamento
-        ) return;
-
-        try {
-          await atualizarSituacao();
-        } catch (erro) {
-          console.warn(
-            "Atualização não concluída:",
-            erro
-          );
-        }
-      },
-      INTERVALO_ATUALIZACAO
-    );
-  }
-
-  /*************************************************
-   EVENTOS
-  **************************************************/
-
-  $("cpfInput").addEventListener(
-    "input",
-    e => {
-      const d = somenteNumeros(
-        e.target.value
-      ).slice(0, 11);
-
-      if (d.length > 9) {
-        e.target.value =
-          d.slice(0,3) + "." +
-          d.slice(3,6) + "." +
-          d.slice(6,9) + "-" +
-          d.slice(9);
-
-      } else if (d.length > 6) {
-        e.target.value =
-          d.slice(0,3) + "." +
-          d.slice(3,6) + "." +
-          d.slice(6);
-
-      } else if (d.length > 3) {
-        e.target.value =
-          d.slice(0,3) + "." +
-          d.slice(3);
-
-      } else {
-        e.target.value = d;
-      }
-    }
-  );
-
-  $("cpfInput").addEventListener(
-    "keydown",
-    e => {
-      if (e.key === "Enter") {
-        iniciarConsulta();
-      }
-    }
-  );
-
-  $("btnConsultar").addEventListener(
-    "click",
-    iniciarConsulta
-  );
-
-  $("btnAtualizar").addEventListener(
-    "click",
-    async () => {
-      try {
-        await atualizarSituacao();
-      } catch (erro) {
-        alert(erro.message);
-      }
-    }
-  );
-
-  $("btnEscolher").addEventListener(
-    "click",
-    () => {
-      const selecionada =
-        document.querySelector(
-          'input[name="vaga"]:checked'
-        );
-
-      if (!selecionada) {
-        mensagem(
-          "msgEscolha",
-          "Selecione uma vaga antes " +
-          "de confirmar.",
+  $("cpf").addEventListener("input", function () {
+    this.value = formatarCPF(this.value);
+  });
+
+  $("formConsulta").addEventListener(
+    "submit",
+    async function (evento) {
+
+      evento.preventDefault();
+
+      const cpf = somenteNumeros($("cpf").value);
+
+      $("secaoDados").classList.add("oculto");
+      limparMensagem("mensagemConsulta");
+      limparMensagem("mensagemDecisao");
+      cpfConsultado = "";
+
+      if (cpf.length !== 11) {
+        mostrarMensagem(
+          "mensagemConsulta",
+          "Informe um CPF com 11 dígitos.",
           "erro"
         );
         return;
       }
 
-      confirmarDecisao(
-        "ESCOLHER_VAGA",
-        selecionada.value
+      $("btnConsultar").disabled = true;
+      $("btnConsultar").textContent = "Consultando...";
+
+      try {
+
+        const url = new URL(API_URL);
+
+        url.searchParams.set("page", "cadastro_remocao");
+        url.searchParams.set("action", "consultar");
+        url.searchParams.set("cpf", cpf);
+
+        const resposta = await fetch(url.toString(), {
+          method: "GET",
+          redirect: "follow",
+          cache: "no-store"
+        });
+
+        if (!resposta.ok) {
+          throw new Error(
+            "Não foi possível acessar o serviço de consulta."
+          );
+        }
+
+        const dados = await resposta.json();
+
+        if (!dados.ok || !dados.candidato) {
+          mostrarMensagem(
+            "mensagemConsulta",
+            dados.erro || dados.mensagem ||
+              "Professor não localizado na matriz.",
+            "erro"
+          );
+          return;
+        }
+
+        cpfConsultado = cpf;
+
+        preencherDados(dados.candidato);
+
+        $("secaoDados").classList.remove("oculto");
+
+        if (dados.inscrito) {
+          bloquearDecisao();
+
+          mostrarMensagem(
+            "mensagemDecisao",
+            "Sua inscrição já consta no sistema. " +
+            "Não é necessário realizar uma nova inscrição.",
+            "sucesso"
+          );
+        } else {
+          liberarDecisao();
+        }
+
+      } catch (erro) {
+
+        console.error(erro);
+
+        mostrarMensagem(
+          "mensagemConsulta",
+          "Não foi possível concluir a consulta. " +
+          "Verifique a publicação do Apps Script " +
+          "e a conexão com o serviço.",
+          "erro"
+        );
+
+      } finally {
+
+        $("btnConsultar").disabled = false;
+        $("btnConsultar").textContent =
+          "Consultar meus dados";
+
+      }
+
+    }
+  );
+
+  $("btnNao").addEventListener("click", function () {
+
+    bloquearDecisao();
+
+    mostrarMensagem(
+      "mensagemDecisao",
+      "Você optou por não participar do Concurso de Remoção. " +
+      "Nenhuma inscrição foi enviada.",
+      "aviso"
+    );
+
+  });
+
+  $("btnSim").addEventListener("click", async function () {
+
+    if (!cpfConsultado || inscricaoEmAndamento) {
+      return;
+    }
+
+    const confirmou = window.confirm(
+      "Confirma sua inscrição para participar " +
+      "do Concurso de Remoção?"
+    );
+
+    if (!confirmou) {
+      return;
+    }
+
+    inscricaoEmAndamento = true;
+
+    $("btnSim").disabled = true;
+    $("btnNao").disabled = true;
+
+    limparMensagem("mensagemDecisao");
+
+    mostrarMensagem(
+      "mensagemDecisao",
+      "Enviando sua inscrição...",
+      "aviso"
+    );
+
+    try {
+
+      const corpo = new URLSearchParams();
+
+      corpo.set("page", "cadastro_remocao");
+      corpo.set("action", "confirmar");
+      corpo.set("cpf", cpfConsultado);
+
+      const resposta = await fetch(API_URL, {
+        method: "POST",
+        body: corpo,
+        redirect: "follow"
+      });
+
+      if (!resposta.ok) {
+        throw new Error("Falha na comunicação.");
+      }
+
+      const dados = await resposta.json();
+
+      if (!dados.ok) {
+
+        mostrarMensagem(
+          "mensagemDecisao",
+          dados.erro || dados.mensagem ||
+            "Não foi possível confirmar a inscrição.",
+          "erro"
+        );
+
+        return;
+      }
+
+      bloquearDecisao();
+
+      mostrarMensagem(
+        "mensagemDecisao",
+        "Sua inscrição foi registrada com sucesso! " +
+        "Você está inscrito para participar do " +
+        "Concurso de Remoção.",
+        "sucesso"
       );
-    }
-  );
 
-  $("btnManter").addEventListener(
-    "click",
-    () => {
-      confirmarDecisao("MANTER");
-    }
-  );
+    } catch (erro) {
 
-  $("btnProxima").addEventListener(
-    "click",
-    () => {
-      confirmarDecisao(
-        "PROXIMA_ETAPA"
+      console.error(erro);
+
+      mostrarMensagem(
+        "mensagemDecisao",
+        "Não foi possível confirmar o resultado do envio. " +
+        "Consulte novamente seu CPF antes de tentar " +
+        "realizar outra inscrição.",
+        "erro"
       );
-    }
-  );
 
-  $("btnImprimir").addEventListener(
-    "click",
-    () => {
-      window.print();
+    } finally {
+
+      inscricaoEmAndamento = false;
+      $("btnSim").disabled = false;
+      $("btnNao").disabled = false;
+
     }
-  );
+
+  });
 
 </script>
 
