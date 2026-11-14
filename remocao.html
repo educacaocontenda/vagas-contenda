@@ -504,10 +504,10 @@
 
         if (!dados.ok || !dados.candidato) {
           mostrarMensagem(
-            "mensagemConsulta",
-            dados.erro || dados.mensagem ||
-              "CPF não encontrado. Verifique se o número informado está correto e tente novamente.",
-            "erro"
+              "mensagemConsulta",
+                    dados.erro || dados.mensagem ||
+                    "O sistema não conseguiu localizar o cadastro. Verifique a consulta.",
+                      "erro"
           );
           return;
         }
