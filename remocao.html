@@ -200,12 +200,32 @@
         grid-template-columns: 1fr;
       }
     }
+    .logos {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.logo {
+  height: 44px;
+  width: auto;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 10px;
+  padding: 6px 8px;
+}
   </style>
 </head>
 
 <body>
 
 <header>
+  <div class="logos">
+    <img class="logo" src="logo-prefeitura.png" alt="Prefeitura Municipal de Contenda">
+    <img class="logo" src="logo-secretaria.png" alt="Secretaria Municipal de Educação">
+  </div>
   <h1>Concurso de Remoção</h1>
   <p>Inscrição para participação</p>
   <p>Secretaria Municipal de Educação, Cultura, Esporte e Turismo</p>
