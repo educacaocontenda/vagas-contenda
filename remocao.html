@@ -554,14 +554,48 @@
 
         const dados = await resposta.json();
 
-        if (!dados.ok || !dados.candidato) {
-          mostrarMensagem(
-            "mensagemConsulta",
-            "CPF não encontrado. Verifique se o número informado está correto e tente novamente.",
-            "erro"
-          );
-          return;
-        }
+       
+if (!dados.ok) {
+
+  const motivo = String(
+    dados.motivo ||
+    dados.error ||
+    dados.erro ||
+    dados.mensagem ||
+    "ERRO_DESCONHECIDO"
+  );
+
+  console.error(
+    "Erro retornado pelo Apps Script:",
+    dados
+  );
+
+  mostrarMensagem(
+    "mensagemConsulta",
+    "Não foi possível consultar o CPF. " +
+    "Resposta do sistema: " + motivo,
+    "erro"
+  );
+
+  return;
+}
+
+if (!dados.candidato) {
+
+  console.error(
+    "Resposta sem dados do candidato:",
+    dados
+  );
+
+  mostrarMensagem(
+    "mensagemConsulta",
+    "O sistema respondeu à consulta, mas não retornou os dados do professor.",
+    "erro"
+  );
+
+  return;
+}
+
 
         cpfConsultado = cpf;
         preencherDados(dados.candidato);
