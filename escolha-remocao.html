@@ -775,28 +775,86 @@ $("cpf").addEventListener("input", e => {
   e.target.value = mask(e.target.value);
 });
 
-$("formCpf").addEventListener(
-  "submit",
-  e => {
+
+$('formCpf').addEventListener(
+  'submit',
+  async function(e) {
     e.preventDefault();
 
-    const c = digits($("cpf").value);
+    if (busy) return;
+
+    const c = digits($('cpf').value);
 
     if (!validCpf(c)) {
       msg(
-        "cpfMsg",
-        "CPF incorreto. Verifique os 11 dígitos e tente novamente."
+        'cpfMsg',
+        'CPF incorreto. Verifique o número informado.'
       );
       return;
     }
 
-    cpf = c;
+    busy = true;
+    msg('cpfMsg', '');
 
-    msg("cpfMsg", "");
+    const botao = document.querySelector(
+      '#formCpf button[type="submit"]'
+    );
 
-    screen("screenAccess");
+    botao.disabled = true;
+    botao.textContent = 'Consultando...';
+
+    try {
+      const url = new URL(API_URL);
+
+      url.searchParams.set('page', 'remocao');
+      url.searchParams.set(
+        'action',
+        'verificar_inscricao'
+      );
+      url.searchParams.set('cpf', c);
+
+      const resposta = await fetch(url, {
+        cache: 'no-store'
+      });
+
+      if (!resposta.ok) {
+        throw new Error(
+          'Falha na comunicação com o sistema.'
+        );
+      }
+
+      const dados = await resposta.json();
+
+      if (!dados.ok || !dados.inscrito) {
+        msg(
+          'cpfMsg',
+          dados.mensagem ||
+          'Inscrição não realizada para o Concurso de Remoção.'
+        );
+        return;
+      }
+
+      cpf = c;
+
+      // Inscrição confirmada.
+      // Próxima tela será a autenticação,
+      // quando o envio de código estiver pronto.
+      screen('screenAccess');
+
+    } catch (erro) {
+      msg(
+        'cpfMsg',
+        'Não foi possível consultar a inscrição. Tente novamente.'
+      );
+
+    } finally {
+      busy = false;
+      botao.disabled = false;
+      botao.textContent = 'Continuar';
+    }
   }
 );
+
 
 $("backCpf").onclick = () => {
   screen("screenCpf");
