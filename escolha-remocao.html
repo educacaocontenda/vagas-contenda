@@ -1200,58 +1200,66 @@ function render(d) {
     );
   });
 
-  let texto = "";
-
-  if (final) {
-    texto =
-      "Este CPF já finalizou sua remoção. Não é possível realizar uma nova decisão.";
-
-  } else if (!d.processoAtivo) {
-    texto =
-      "Aguarde a abertura do processo de escolha da remoção.";
-
  
-} else if (
-  Number(c.etapa) > Number(d.etapaAtiva)
-) {
+let texto = "";
+
+if (final) {
+  texto =
+    "Sua participação no Concurso de Remoção " +
+    "foi finalizada.";
+
+} else if (!d.processoAtivo) {
+  texto =
+    "Aguarde a abertura do processo de remoção.";
+
+} else if (Number(c.etapa) > Number(d.etapaAtiva)) {
   texto =
     "AGUARDANDO ABERTURA DA " +
     Number(c.etapa) + "ª ETAPA\n\n" +
-    "Você concluiu sua participação na " +
-    (Number(c.etapa) - 1) + "ª etapa " +
-    "e optou por avançar.\n\n" +
+    "Você concluiu sua participação na etapa " +
+    (Number(c.etapa) - 1) + " e optou por avançar.\n\n" +
     "Sua lotação permanece inalterada. " +
-    "Aguarde a Secretaria concluir a etapa " +
-    "anterior e liberar a próxima.";
+    "Aguarde a abertura da próxima etapa.";
 
-} else if (
-  Number(c.etapa) !== Number(d.etapaAtiva)
-) {
+} else if (Number(c.etapa) !== Number(d.etapaAtiva)) {
   texto =
-    "Sua etapa não está disponível " +
-    "para novas decisões.";
+    "Sua etapa não está disponível para decisões.";
 
-    texto =
-      "Você está aguardando a próxima etapa. Sua lotação permanece inalterada.";
+} else if (status === "NOVA_ESCOLHA") {
+  texto =
+    "NOVA ESCOLHA NECESSÁRIA\n\n" +
+    "A instituição indicada anteriormente " +
+    "não possui mais vagas disponíveis.\n\n" +
+    "A vaga foi preenchida por outro professor " +
+    "com prioridade superior na classificação.\n\n" +
+    "Sua lotação atual permanece inalterada.\n\n" +
+    "Você já pode registrar uma nova preferência, " +
+    "manter sua lotação atual ou avançar " +
+    "para a próxima etapa.\n\n" +
+    "Uma nova preferência aguardará sua " +
+    "classificação para confirmação da transferência.";
 
-  } else if (!d.minhaVez) {
-    texto =
-      "Aguarde a finalização do processo. Sua escolha ainda não foi definida.";
+} else if (c.preferencia) {
+  texto =
+    "PREFERÊNCIA REGISTRADA\n\n" +
+    "Instituição: " + c.preferencia + "\n\n" +
+    "Sua transferência ainda não foi confirmada. " +
+    "Aguarde o processamento conforme " +
+    "a ordem de classificação.";
 
-  } else if (status === "NOVA_ESCOLHA") {
-    texto =
-      "A vaga indicada anteriormente não está mais disponível. Escolha outra instituição.";
+} else if (!d.minhaVez) {
+  texto =
+    "Você pode registrar sua preferência, " +
+    "manter a lotação atual ou avançar de etapa.\n\n" +
+    "A transferência para outra instituição " +
+    "será confirmada somente quando chegar " +
+    "sua vez na classificação.";
 
-  } else if (c.preferencia) {
-    texto =
-      "Sua preferência registrada é " +
-      c.preferencia +
-      ". Confira a disponibilidade atual.";
-
-  } else {
-    texto =
-      "Chegou sua vez de escolher. Confira as opções e confirme sua decisão.";
-  }
+} else {
+  texto =
+    "Sua etapa está aberta. Selecione " +
+    "uma das decisões disponíveis.";
+}
 
   msg("stateMsg", texto, "info");
 
