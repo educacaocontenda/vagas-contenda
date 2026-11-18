@@ -930,7 +930,27 @@ document.querySelectorAll(
     radio.value === "ESCOLHER_VAGA";
 });
 
-$("school").disabled = false;
+
+/* EXIBIR AS TRÊS OPÇÕES DE DECISÃO */
+
+document.querySelectorAll(
+  'input[name="decision"]'
+).forEach(radio => {
+  const opcao = radio.closest(".choice");
+
+  if (opcao) {
+    opcao.classList.remove("hidden");
+  }
+
+  radio.checked = false;
+});
+
+$("nextChoice").classList.toggle(
+  "hidden",
+  Number(dadosEscolha.candidato?.etapa || 1) >= 3
+);
+
+$("school").disabled = true;
 
 
 const candidato = dadosEscolha.candidato || {};
