@@ -953,28 +953,35 @@ $("viewStage").textContent =
 
 
 
+
 /* CONTROLE DE ABERTURA DAS ETAPAS */
 
-const etapaProfessor = Number(
-  dadosEscolha.candidato?.etapa || 1
-);
-
-const etapaAtiva = Number(
-  dadosEscolha.etapaAtiva || 0
-);
+const etapaProfessor = Number(candidato.etapa);
+const etapaAtiva = Number(dadosEscolha.etapaAtiva);
 
 const aguardandoProximaEtapa =
   etapaProfessor > etapaAtiva;
 
-const etapaCorreta =
+const etapaLiberada =
   etapaProfessor === etapaAtiva;
 
-const liberado =
-  dadosEscolha.processoAtivo === true &&
-  !dadosEscolha.finalizado &&
-  etapaCorreta;
+const finalizado =
+  dadosEscolha.finalizado === true ||
+  dadosEscolha.removido === true ||
+  ["FINALIZADO_REMOCAO",
+   "FINALIZADO_PERMANENCIA",
+   "CONFIRMADO"].includes(
+    String(candidato.situacao || "").toUpperCase()
+  );
 
-/* Mostrar ou esconder as decisões */
+const processoAtivo =
+  dadosEscolha.processoAtivo === true ||
+  String(dadosEscolha.processoAtivo).toUpperCase() === "SIM";
+
+const liberado =
+  processoAtivo &&
+  !finalizado &&
+  etapaLiberada;
 
 $("choicePanel").classList.toggle(
   "hidden",
@@ -983,7 +990,7 @@ $("choicePanel").classList.toggle(
 
 $("btnConfirm").disabled = !liberado;
 
-/* Mensagem apresentada ao professor */
+lastData = dadosEscolha;
 
 if (aguardandoProximaEtapa) {
 
@@ -991,37 +998,50 @@ if (aguardandoProximaEtapa) {
     "stateMsg",
     "AGUARDANDO ABERTURA DA " +
     etapaProfessor + "ª ETAPA\n\n" +
-    "Sua decisão de avançar foi registrada " +
-    "com sucesso.\n\n" +
-    "Você permanece na sua lotação atual. " +
+    "Você concluiu sua participação na " +
+    (etapaProfessor - 1) + "ª etapa e " +
+    "optou por avançar para a próxima.\n\n" +
+    "Sua lotação atual permanece inalterada. " +
     "Nenhuma vaga foi liberada.\n\n" +
-    "As opções serão disponibilizadas " +
-    "quando a Secretaria concluir a etapa " +
-    "anterior e abrir a próxima.",
+    "Aguarde a conclusão da etapa anterior " +
+    "para realizar suas escolhas.",
     "info"
   );
 
-} else if (!dadosEscolha.processoAtivo) {
+} else if (finalizado) {
 
   msg(
     "stateMsg",
-    "A escolha de remoção ainda não foi liberada.",
+    "Sua participação no Concurso de Remoção " +
+    "já foi finalizada.",
     "info"
   );
 
-} else if (dadosEscolha.finalizado) {
+} else if (!processoAtivo) {
 
   msg(
     "stateMsg",
-    "Sua participação na remoção já foi finalizada.",
+    "Aguarde a abertura do processo de remoção.",
     "info"
   );
 
-} else if (!etapaCorreta) {
+} else if (!etapaLiberada) {
 
   msg(
     "stateMsg",
-    "Sua etapa não está aberta para decisões.",
+    "Esta etapa ainda não está disponível " +
+    "para suas decisões.",
+    "info"
+  );
+
+} else if (candidato.escolaEscolhida) {
+
+  msg(
+    "stateMsg",
+    "Preferência registrada: " +
+    candidato.escolaEscolhida +
+    "\n\nAguarde o processamento conforme " +
+    "a ordem de classificação.",
     "info"
   );
 
@@ -1034,65 +1054,6 @@ if (aguardandoProximaEtapa) {
     "info"
   );
 }
-
-
-// A gravação ainda exige autenticação.
-
-lastData = dadosEscolha;
-
-$("btnConfirm").disabled =
-  !dadosEscolha.processoAtivo ||
-  dadosEscolha.finalizado;
-
-
-
-if (dadosEscolha.removido) {
-
-  msg(
-    "stateMsg",
-    "REMOÇÃO CONCLUÍDA COM SUCESSO\n\n" +
-    "Lotação anterior: " +
-    (candidato.lotacaoOriginal || "Não informada") +
-    "\n" +
-    "Nova lotação: " +
-    (candidato.lotacaoAtual || "Não informada") +
-    "\n\n" +
-    "Sua participação foi finalizada.",
-    "info"
-  );
-
-} else if (dadosEscolha.finalizado) {
-
-  msg(
-    "stateMsg",
-    dadosEscolha.mensagem,
-    "info"
-  );
-
-} else if (candidato.escolaEscolhida) {
-
-  msg(
-    "stateMsg",
-    "Preferência registrada: " +
-    candidato.escolaEscolhida +
-    "\n\nAguarde o processamento das escolhas " +
-    "conforme a ordem de classificação.",
-    "info"
-  );
-
-} else {
-
-  msg(
-    "stateMsg",
-    dadosEscolha.processoAtivo
-      ? "Inscrição localizada. Selecione a " +
-        "instituição desejada para remoção."
-      : "A escolha de remoção ainda não foi liberada.",
-    "info"
-  );
-
-}
-
 
 screen("screenDecision");
 
@@ -1249,10 +1210,27 @@ function render(d) {
     texto =
       "Aguarde a abertura do processo de escolha da remoção.";
 
-  } else if (
-    Number(c.etapa) !==
-    Number(d.etapaAtiva)
-  ) {
+ 
+} else if (
+  Number(c.etapa) > Number(d.etapaAtiva)
+) {
+  texto =
+    "AGUARDANDO ABERTURA DA " +
+    Number(c.etapa) + "ª ETAPA\n\n" +
+    "Você concluiu sua participação na " +
+    (Number(c.etapa) - 1) + "ª etapa " +
+    "e optou por avançar.\n\n" +
+    "Sua lotação permanece inalterada. " +
+    "Aguarde a Secretaria concluir a etapa " +
+    "anterior e liberar a próxima.";
+
+} else if (
+  Number(c.etapa) !== Number(d.etapaAtiva)
+) {
+  texto =
+    "Sua etapa não está disponível " +
+    "para novas decisões.";
+
     texto =
       "Você está aguardando a próxima etapa. Sua lotação permanece inalterada.";
 
@@ -1467,7 +1445,7 @@ if (!d.ok) {
 
     const descricaoDecisao =
       decisao === "ESCOLHER_VAGA"
-        ? "Transferência confirmada"
+        ? "Preferência de vaga registrada — aguardando classificação"
         : decisao === "MANTER"
           ? "Manter lotação atual"
           : "Avançar para a próxima etapa";
