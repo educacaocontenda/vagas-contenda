@@ -952,14 +952,89 @@ $("viewStage").textContent =
 
 
 
+
+/* CONTROLE DE ABERTURA DAS ETAPAS */
+
+const etapaProfessor = Number(
+  dadosEscolha.candidato?.etapa || 1
+);
+
+const etapaAtiva = Number(
+  dadosEscolha.etapaAtiva || 0
+);
+
+const aguardandoProximaEtapa =
+  etapaProfessor > etapaAtiva;
+
+const etapaCorreta =
+  etapaProfessor === etapaAtiva;
+
 const liberado =
-  dadosEscolha.processoAtivo &&
-  !dadosEscolha.finalizado;
+  dadosEscolha.processoAtivo === true &&
+  !dadosEscolha.finalizado &&
+  etapaCorreta;
+
+/* Mostrar ou esconder as decisões */
 
 $("choicePanel").classList.toggle(
   "hidden",
   !liberado
 );
+
+$("btnConfirm").disabled = !liberado;
+
+/* Mensagem apresentada ao professor */
+
+if (aguardandoProximaEtapa) {
+
+  msg(
+    "stateMsg",
+    "AGUARDANDO ABERTURA DA " +
+    etapaProfessor + "ª ETAPA\n\n" +
+    "Sua decisão de avançar foi registrada " +
+    "com sucesso.\n\n" +
+    "Você permanece na sua lotação atual. " +
+    "Nenhuma vaga foi liberada.\n\n" +
+    "As opções serão disponibilizadas " +
+    "quando a Secretaria concluir a etapa " +
+    "anterior e abrir a próxima.",
+    "info"
+  );
+
+} else if (!dadosEscolha.processoAtivo) {
+
+  msg(
+    "stateMsg",
+    "A escolha de remoção ainda não foi liberada.",
+    "info"
+  );
+
+} else if (dadosEscolha.finalizado) {
+
+  msg(
+    "stateMsg",
+    "Sua participação na remoção já foi finalizada.",
+    "info"
+  );
+
+} else if (!etapaCorreta) {
+
+  msg(
+    "stateMsg",
+    "Sua etapa não está aberta para decisões.",
+    "info"
+  );
+
+} else {
+
+  msg(
+    "stateMsg",
+    "Inscrição localizada. Selecione uma " +
+    "das decisões disponíveis.",
+    "info"
+  );
+}
+
 
 // A gravação ainda exige autenticação.
 
@@ -1202,10 +1277,41 @@ function render(d) {
 
   msg("stateMsg", texto, "info");
 
-  $("choicePanel").classList.toggle(
-    "hidden",
-    !d.podeDecidir || final
+  
+const etapaProfessorAtual = Number(c.etapa);
+const etapaAbertaAtual = Number(d.etapaAtiva);
+
+const aguardandoEtapa =
+  etapaProfessorAtual > etapaAbertaAtual;
+
+const etapaDisponivel =
+  etapaProfessorAtual === etapaAbertaAtual;
+
+const permitirOpcoes =
+  d.processoAtivo === true &&
+  !final &&
+  etapaDisponivel;
+
+$("choicePanel").classList.toggle(
+  "hidden",
+  !permitirOpcoes
+);
+
+$("btnConfirm").disabled = !permitirOpcoes;
+
+if (aguardandoEtapa) {
+  msg(
+    "stateMsg",
+    "AGUARDANDO ABERTURA DA " +
+    etapaProfessorAtual + "ª ETAPA\n\n" +
+    "Sua decisão de avançar foi registrada. " +
+    "Você permanece na sua lotação atual.\n\n" +
+    "Aguarde a Secretaria concluir a etapa " +
+    "anterior e liberar a próxima.",
+    "info"
   );
+}
+
 }
 
 /* SELEÇÃO DE VAGA */
