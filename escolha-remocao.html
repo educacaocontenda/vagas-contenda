@@ -979,7 +979,13 @@ $("choicePanel").classList.toggle(
 );
 
 // A gravação ainda exige autenticação.
-$("btnConfirm").disabled = true;
+
+lastData = dadosEscolha;
+
+$("btnConfirm").disabled =
+  !dadosEscolha.processoAtivo ||
+  dadosEscolha.finalizado;
+
 
 
 if (dadosEscolha.removido) {
