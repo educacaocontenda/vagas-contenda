@@ -289,6 +289,11 @@
         color: black;
       }
     }
+    
+#stateMsg {
+  white-space: pre-line;
+}
+
   </style>
 </head>
 
@@ -927,11 +932,21 @@ document.querySelectorAll(
 
 $("school").disabled = false;
 
-$("viewCode").textContent = "–";
-$("viewName").textContent = "–";
-$("viewSchool").textContent = "–";
+
+const candidato = dadosEscolha.candidato || {};
+
+$("viewCode").textContent =
+  candidato.codigo || "–";
+
+$("viewName").textContent =
+  candidato.nome || "–";
+
+$("viewSchool").textContent =
+  candidato.lotacaoAtual || "–";
+
 $("viewStage").textContent =
-  dadosEscolha.etapaAtiva || "–";
+  candidato.etapa || "–";
+
 
 const liberado =
   dadosEscolha.processoAtivo &&
@@ -945,17 +960,54 @@ $("choicePanel").classList.toggle(
 // A gravação ainda exige autenticação.
 $("btnConfirm").disabled = true;
 
-msg(
-  "stateMsg",
-  dadosEscolha.finalizado
-    ? "Sua participação na remoção já foi finalizada."
-    : !dadosEscolha.processoAtivo
-      ? "A escolha de remoção ainda não foi liberada."
-      : "Selecione a instituição desejada. " +
-        "A confirmação será habilitada após a " +
-        "conclusão do controle de acesso.",
-  "info"
-);
+
+if (dadosEscolha.removido) {
+
+  msg(
+    "stateMsg",
+    "REMOÇÃO CONCLUÍDA COM SUCESSO\n\n" +
+    "Lotação anterior: " +
+    (candidato.lotacaoOriginal || "Não informada") +
+    "\n" +
+    "Nova lotação: " +
+    (candidato.lotacaoAtual || "Não informada") +
+    "\n\n" +
+    "Sua participação foi finalizada.",
+    "info"
+  );
+
+} else if (dadosEscolha.finalizado) {
+
+  msg(
+    "stateMsg",
+    dadosEscolha.mensagem,
+    "info"
+  );
+
+} else if (candidato.escolaEscolhida) {
+
+  msg(
+    "stateMsg",
+    "Preferência registrada: " +
+    candidato.escolaEscolhida +
+    "\n\nAguarde o processamento das escolhas " +
+    "conforme a ordem de classificação.",
+    "info"
+  );
+
+} else {
+
+  msg(
+    "stateMsg",
+    dadosEscolha.processoAtivo
+      ? "Inscrição localizada. Selecione a " +
+        "instituição desejada para remoção."
+      : "A escolha de remoção ainda não foi liberada.",
+    "info"
+  );
+
+}
+
 
 screen("screenDecision");
 
