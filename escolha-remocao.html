@@ -834,12 +834,20 @@ $('formCpf').addEventListener(
         return;
       }
 
-      cpf = c;
+     cpf = c;
 
-      // Inscrição confirmada.
-      // Próxima tela será a autenticação,
-      // quando o envio de código estiver pronto.
-      screen('screenAccess');
+msg('cpfMsg', '');
+
+msg(
+  'stateMsg',
+  'Inscrição localizada com sucesso. ' +
+  'Aguarde a liberação da próxima etapa de acesso.',
+  'info'
+);
+
+$('choicePanel').classList.add('hidden');
+
+screen('screenDecision');
 
     } catch (erro) {
       msg(
