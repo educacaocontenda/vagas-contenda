@@ -863,14 +863,27 @@ if (!respostaEscolha.ok) {
 const dadosEscolha =
   await respostaEscolha.json();
 
+
 if (!dadosEscolha.ok) {
+  console.error(
+    "Erro na consulta de escolha:",
+    dadosEscolha
+  );
+
   msg(
     "cpfMsg",
-    dadosEscolha.mensagem ||
-    "Não foi possível consultar a inscrição."
+    "Erro na consulta: " +
+    (
+      dadosEscolha.mensagem ||
+      dadosEscolha.motivo ||
+      dadosEscolha.erro ||
+      "Resposta não identificada."
+    )
   );
+
   return;
 }
+
 
 cpf = c;
 
