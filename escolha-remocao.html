@@ -913,23 +913,6 @@ select.replaceChildren(
   );
 });
 
-// Nesta fase, somente a preferência antecipada.
-document.querySelectorAll(
-  'input[name="decision"]'
-).forEach(radio => {
-  const opcao = radio.closest(".choice");
-
-  if (opcao) {
-    opcao.classList.toggle(
-      "hidden",
-      radio.value !== "ESCOLHER_VAGA"
-    );
-  }
-
-  radio.checked =
-    radio.value === "ESCOLHER_VAGA";
-});
-
 
 /* EXIBIR AS TRÊS OPÇÕES DE DECISÃO */
 
@@ -1352,13 +1335,21 @@ $("btnConfirm").onclick = async () => {
       id
     );
 
-    if (!d.ok) {
-      msg(
-        "decisionMsg",
-        errorMessage(d)
-      );
-      return;
-    }
+    
+if (!d.ok) {
+  console.error(
+    "ERRO RETORNADO PELO APPS SCRIPT:",
+    d
+  );
+
+  msg(
+    "decisionMsg",
+    "Erro ao registrar a decisão: " +
+    errorMessage(d)
+  );
+
+  return;
+}
 
     const c =
       lastData.candidato || {};
