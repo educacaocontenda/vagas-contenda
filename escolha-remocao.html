@@ -936,7 +936,7 @@ $("school").disabled = false;
 const candidato = dadosEscolha.candidato || {};
 
 $("viewCode").textContent =
-  candidato.codigo || "–";
+  candidato.codigo ?? "–";
 
 $("viewName").textContent =
   candidato.nome || "–";
@@ -945,7 +945,8 @@ $("viewSchool").textContent =
   candidato.lotacaoAtual || "–";
 
 $("viewStage").textContent =
-  candidato.etapa || "–";
+  candidato.etapa ?? "–";
+
 
 
 const liberado =
