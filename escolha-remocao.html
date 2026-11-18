@@ -978,10 +978,28 @@ const processoAtivo =
   dadosEscolha.processoAtivo === true ||
   String(dadosEscolha.processoAtivo).toUpperCase() === "SIM";
 
+
+const situacaoInicial = String(
+  candidato.situacao || ""
+).toUpperCase();
+
+const preferenciaPendente =
+  situacaoInicial === "AGUARDANDO_VEZ" ||
+  situacaoInicial === "PENDENTE_PROCESSAMENTO" ||
+  (
+    Boolean(
+      candidato.preferencia ||
+      candidato.escolaEscolhida
+    ) &&
+    situacaoInicial !== "NOVA_ESCOLHA"
+  );
+
 const liberado =
   processoAtivo &&
   !finalizado &&
-  etapaLiberada;
+  etapaLiberada &&
+  !preferenciaPendente;
+
 
 $("choicePanel").classList.toggle(
   "hidden",
@@ -1273,10 +1291,25 @@ const aguardandoEtapa =
 const etapaDisponivel =
   etapaProfessorAtual === etapaAbertaAtual;
 
+
+const situacaoAtual = String(
+  c.situacao || ""
+).toUpperCase();
+
+const possuiPreferencia =
+  situacaoAtual === "AGUARDANDO_VEZ" ||
+  situacaoAtual === "PENDENTE_PROCESSAMENTO" ||
+  (
+    Boolean(c.preferencia || c.escolaEscolhida) &&
+    situacaoAtual !== "NOVA_ESCOLHA"
+  );
+
 const permitirOpcoes =
   d.processoAtivo === true &&
   !final &&
-  etapaDisponivel;
+  etapaDisponivel &&
+  !possuiPreferencia;
+
 
 $("choicePanel").classList.toggle(
   "hidden",
