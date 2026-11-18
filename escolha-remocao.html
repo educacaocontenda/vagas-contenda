@@ -1329,12 +1329,17 @@ $("btnConfirm").onclick = async () => {
   const id = operationId();
 
   try {
-    const d = await apiPost(
-      decisao,
-      escola,
-      id
-    );
+    
+const decisaoEnviada =
+  decisao === "ESCOLHER_VAGA"
+    ? "PREFERENCIA"
+    : decisao;
 
+const d = await apiPost(
+  decisaoEnviada,
+  escola,
+  id
+);
     
 if (!d.ok) {
   console.error(
