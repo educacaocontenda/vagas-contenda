@@ -834,20 +834,118 @@ $('formCpf').addEventListener(
         return;
       }
 
-     cpf = c;
+     
+const urlEscolha = new URL(API_URL);
 
-msg('cpfMsg', '');
-
-msg(
-  'stateMsg',
-  'Inscrição localizada com sucesso. ' +
-  'Aguarde a liberação da próxima etapa de acesso.',
-  'info'
+urlEscolha.searchParams.set(
+  "page", "remocao"
 );
 
-$('choicePanel').classList.add('hidden');
+urlEscolha.searchParams.set(
+  "action", "escolha_inicial"
+);
 
-screen('screenDecision');
+urlEscolha.searchParams.set(
+  "cpf", c
+);
+
+const respostaEscolha = await fetch(
+  urlEscolha,
+  { cache: "no-store" }
+);
+
+if (!respostaEscolha.ok) {
+  throw new Error(
+    "Não foi possível consultar as vagas."
+  );
+}
+
+const dadosEscolha =
+  await respostaEscolha.json();
+
+if (!dadosEscolha.ok) {
+  msg(
+    "cpfMsg",
+    dadosEscolha.mensagem ||
+    "Não foi possível consultar a inscrição."
+  );
+  return;
+}
+
+cpf = c;
+
+const select = $("school");
+
+select.replaceChildren(
+  new Option(
+    "Selecione uma instituição",
+    ""
+  )
+);
+
+(dadosEscolha.vagas || []).forEach(vaga => {
+  select.add(
+    new Option(
+      vaga.escola +
+      " — " +
+      vaga.quantidade +
+      " vaga(s)",
+      vaga.escolaId
+    )
+  );
+});
+
+// Nesta fase, somente a preferência antecipada.
+document.querySelectorAll(
+  'input[name="decision"]'
+).forEach(radio => {
+  const opcao = radio.closest(".choice");
+
+  if (opcao) {
+    opcao.classList.toggle(
+      "hidden",
+      radio.value !== "ESCOLHER_VAGA"
+    );
+  }
+
+  radio.checked =
+    radio.value === "ESCOLHER_VAGA";
+});
+
+$("school").disabled = false;
+
+$("viewCode").textContent = "–";
+$("viewName").textContent = "–";
+$("viewSchool").textContent = "–";
+$("viewStage").textContent =
+  dadosEscolha.etapaAtiva || "–";
+
+const liberado =
+  dadosEscolha.processoAtivo &&
+  !dadosEscolha.finalizado;
+
+$("choicePanel").classList.toggle(
+  "hidden",
+  !liberado
+);
+
+// A gravação ainda exige autenticação.
+$("btnConfirm").disabled = true;
+
+msg(
+  "stateMsg",
+  dadosEscolha.finalizado
+    ? "Sua participação na remoção já foi finalizada."
+    : !dadosEscolha.processoAtivo
+      ? "A escolha de remoção ainda não foi liberada."
+      : "Selecione a instituição desejada. " +
+        "A confirmação será habilitada após a " +
+        "conclusão do controle de acesso.",
+  "info"
+);
+
+screen("screenDecision");
+
 
     } catch (erro) {
       msg(
