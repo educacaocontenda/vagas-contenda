@@ -1,1893 +1,917 @@
-
-/*********************************************************
- SECRETARIA MUNICIPAL DE EDUCAÇÃO DE CONTENDA
- CONCURSO DE REMOÇÃO PROGRESSIVA — 2026
-
- VERSÃO CONSOLIDADA PARA HOMOLOGAÇÃO
-
- Integração com Código.gs:
- - rpIntegradoConsultar_(dados)
- - rpIntegradoDecidir_(dados)
-
- Estrutura:
- - Classificação oficial
- - Preferência antecipada
- - Processamento automático da fila
- - Nova escolha
- - Transferência
- - Permanência
- - Avanço de etapa
- - Controle de vagas
- - Histórico
- - Credenciais individuais
- - Notificações
- - Alerta administrativo de 60 minutos
- - Recuperação supervisionada de falhas
-
- REGRAS FUNDAMENTAIS:
-
- TRANSFERÊNCIA:
-   Destino perde 1 vaga.
-   Origem recebe 1 vaga.
-
- PERMANÊNCIA:
-   Não altera vagas.
-   Encerra participação.
-
- AVANÇO:
-   Não altera vagas.
-   Mantém lotação atual.
-   Participa da etapa seguinte.
-
- A preferência antecipada não reserva vaga.
-
- IMPORTANTE:
- Esta versão opera somente na cópia de testes.
- Não habilitar gravações ou e-mails sem homologação.
-*********************************************************/
-
-
-/*********************************************************
- 1. CONFIGURAÇÕES
-*********************************************************/
-
-const RP_FINAL = {
-
-  GRAVACAO_ATIVA: true,
-
-  EMAIL_ATIVO: false,
-
-  PROCESSAMENTO_AUTOMATICO: false,
-
-  ALERTA_MINUTOS: 60,
-
-  PREFIXO: "RPC26_",
-
-  STATUS: {
-
-    PENDENTE: "PENDENTE",
-
-    AGUARDANDO: "AGUARDANDO_VEZ",
-
-    NOVA_ESCOLHA: "NOVA_ESCOLHA",
-
-    AGUARDANDO_ETAPA: "AGUARDANDO_ETAPA",
-
-    REMOVIDO: "FINALIZADO_REMOCAO",
-
-    PERMANENCIA: "FINALIZADO_PERMANENCIA"
-
-  }
-
-};
-
-
-/*********************************************************
- 2. FUNÇÕES AUXILIARES
-*********************************************************/
-
-function rpFTexto_(valor) {
-  return normalizarTexto_(valor);
-}
-
-function rpFCpf_(valor) {
-
-  const d = String(
-    valor == null ? "" : valor
-  ).replace(/\D/g, "");
-
-  if (!d || d.length > 11) return "";
-
-  return d.padStart(11, "0");
-}
-
-function rpFErro_(motivo, mensagem) {
-
-  return {
-    ok: false,
-    motivo: motivo,
-    mensagem: mensagem || motivo
-  };
-}
-
-function rpFId_() {
-  return "RPC-" + Utilities.getUuid();
-}
-
-function rpFProps_() {
-  return PropertiesService.getScriptProperties();
-}
-
-function rpFChave_(tipo, valor) {
-
-  return RP_FINAL.PREFIXO +
-    tipo + "_" + String(valor);
-}
-
-function rpFHash_(valor) {
-
-  const bytes = Utilities.computeDigest(
-    Utilities.DigestAlgorithm.SHA_256,
-    String(valor),
-    Utilities.Charset.UTF_8
-  );
-
-  return Utilities.base64EncodeWebSafe(bytes);
-}
-
-function rpFPlanilha_() {
-
-  const ss = planilha_();
-
-  if (
-    REMOCAO_AMBIENTE_TESTE !== true ||
-    ss.getId() !== REMOCAO_ID_PLANILHA_TESTE ||
-    ss.getId() === REMOCAO_ID_PLANILHA_ORIGINAL
-  ) {
-    throw new Error(
-      "PLANILHA_NAO_AUTORIZADA"
-    );
-  }
-
-  return ss;
-}
-
-function rpFLock_(fn) {
-
-  const lock = LockService.getScriptLock();
-
-  if (!lock.tryLock(30000)) {
-    throw new Error(
-      "PROCESSAMENTO_OCUPADO"
-    );
-  }
-
-  try {
-    return fn();
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function rpFConfig_() {
-
-  const c = lerConfig_();
-
-  return {
-    etapa: Number(c.ETAPA_ATIVA || 0),
-    ativo: rpFTexto_(
-      c.PROCESSO_ATIVO
-    ) === "SIM"
-  };
-}
-
-function rpFExigirEscrita_() {
-
-  rpFPlanilha_();
-
-  if (RP_FINAL.GRAVACAO_ATIVA !== true) {
-    throw new Error(
-      "GRAVACAO_DESATIVADA"
-    );
-  }
-
-  rpFExigirSemFalhas_();
-}
-
-
-/*********************************************************
- 3. PARTICIPANTES
-*********************************************************/
-
-function rpFParticipantes_() {
-
-  const lista = todosParticipantes_();
-
-  const codigos = new Set();
-  const cpfs = new Set();
-
-  lista.forEach(p => {
-
-    const codigo = Number(p.codigo);
-    const cpf = rpFCpf_(p.cpf);
-
-    if (
-      !Number.isSafeInteger(codigo) ||
-      codigo < 1
-    ) {
-      throw new Error(
-        "CLASSIFICACAO_INVALIDA"
-      );
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Escolha de Vagas – Professores | Rede Municipal de Contenda</title>
+  <style>
+    :root{
+      --bg:#f5f7fb; --card:#fff; --text:#111827; --muted:#6b7280; --border:#e5e7eb;
+      --primary:#0b4aa2; --primary2:#0a2a5a; --danger:#b91c1c; --ok:#047857; --warn:#a16207;
     }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--text)}
+    header{background:linear-gradient(90deg,var(--primary2),var(--primary));color:#fff;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.15)}
+    .topbar{max-width:1100px;margin:0 auto;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .logos{display:flex;gap:10px;align-items:center}
+    .logo{height:44px;width:auto;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:6px 8px}
+    .titles h1{margin:0;font-size:16px;line-height:1.2}
+    .titles p{margin:4px 0 0 0;font-size:12px;opacity:.95}
+    .stepper{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+    .pill{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);user-select:none}
+    main{max-width:1100px;margin:0 auto;padding:16px;display:grid;gap:12px}
+    @media (min-width: 920px){ main{grid-template-columns:1.25fr .75fr;} }
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    .h2{margin:0 0 8px 0;font-size:16px}
+    .muted{color:var(--muted);font-size:12px}
+    .small{font-size:12px}
+    .grid{display:grid;gap:10px}
+    @media (min-width: 700px){ .grid.two{grid-template-columns:1fr 1fr;} }
+    label{display:block;font-weight:800;font-size:13px;margin-bottom:6px}
+    input,select,button{width:100%;padding:10px 10px;border-radius:12px;border:1px solid var(--border);background:#fff;font-size:14px;outline:none}
+    input:focus,select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(147,197,253,.45)}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .btn{cursor:pointer;border:none;border-radius:12px;padding:10px 12px;font-weight:900;font-size:14px}
+    .btn.primary{background:var(--primary);color:#fff}
+    .btn.secondary{background:#1118270f;color:var(--text);border:1px solid var(--border)}
+    .btn:disabled{opacity:.55;cursor:not-allowed}
+    .divider{height:1px;background:var(--border);margin:12px 0}
+    .choice{border:1px dashed var(--border);border-radius:14px;padding:10px;background:#fafafa}
+    .badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:900;border:1px solid var(--border);background:#fff;margin-right:6px}
+    .status-ok{color:var(--ok)}
+    .status-warn{color:var(--warn)}
+    .status-bad{color:var(--danger)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{padding:8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+    th{color:#374151;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+    .hidden{display:none !important;}
+    footer{max-width:1100px;margin:0 auto;padding:0 16px 16px}
+    .foot{background:#fff;border:1px solid var(--border);border-radius:16px;padding:12px 14px;color:#374151;font-size:12px;line-height:1.35}
 
-    if (!/^\d{11}$/.test(cpf)) {
-      throw new Error(
-        "CPF_INVALIDO_NA_CLASSIFICACAO"
-      );
+    /* Impressão do comprovante */
+    #printArea{display:none;}
+    @media print{
+      body *{visibility:hidden;}
+      #printArea, #printArea *{visibility:visible;}
+      #printArea{
+        display:block;
+        position:fixed; left:0; top:0; right:0; bottom:0;
+        background:#fff; padding:18px;
+      }
+      .no-print{display:none !important;}
     }
-
-    if (codigos.has(codigo)) {
-      throw new Error(
-        "CLASSIFICACAO_DUPLICADA_" + codigo
-      );
+    .receipt{
+      max-width:820px; margin:0 auto;
+      border:1px solid #ddd; border-radius:12px; padding:14px;
     }
-
-    if (cpfs.has(cpf)) {
-      throw new Error(
-        "CPF_DUPLICADO"
-      );
+    .receipt h2{margin:0 0 6px 0; font-size:16px}
+    .receipt .row{display:flex; gap:12px; flex-wrap:wrap}
+    .receipt .box{
+      flex:1 1 220px;
+      border:1px solid #eee; border-radius:10px; padding:10px;
     }
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .sigwrap{
+      display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .sig{
+      border-top:1px solid #bbb;
+      padding-top:6px;
+      min-width:320px;
+    }
+    .sig img{
+      max-height:64px;
+      width:auto;
+      display:block;
+      margin:0 0 6px 0;
+    }
+    .obs{
+      background:#fff7ed;
+      border:1px solid #fed7aa;
+      border-radius:10px;
+      padding:10px;
+      margin-top:10px;
+      color:#7c2d12;
+      font-size:12px;
+      line-height:1.35;
+    }
+  </style>
+</head>
 
-    codigos.add(codigo);
-    cpfs.add(cpf);
-  });
+<body>
+<header>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logos">
+        <img class="logo" src="logo-prefeitura.png" alt="Prefeitura Municipal de Contenda" onerror="this.style.display='none'">
+        <img class="logo" src="logo-secretaria.png" alt="Secretaria Municipal de Educação" onerror="this.style.display='none'">
+      </div>
+      <div class="titles">
+        <h1>Seleção de Vagas – Professores | Rede Municipal de Ensino de Contenda</h1>
+        <p>
+          Preencha a identificação e selecione até 3 opções. <b>1 vaga por turma</b>. Prioridade por <b>data de admissão</b>.
+        </p>
+      </div>
+    </div>
 
-  return lista.sort(
-    (a, b) =>
-      Number(a.codigo) - Number(b.codigo)
-  );
-}
+    <div class="stepper">
+      <span class="pill" id="pillStep1">1) Identificação</span>
+      <span class="pill" id="pillStep2">2) Escolhas</span>
+      <span class="pill" id="pillStep3">3) Resultado</span>
+    </div>
+  </div>
+</header>
 
-function rpFPorCpf_(cpf) {
+<main>
+  <section class="grid" style="gap:12px;">
+    <div class="card" id="step1">
+      <h2 class="h2">1) Identificação do(a) Professor(a)</h2>
+      <p class="muted" style="margin:0 0 10px 0;">Preencha antes de abrir as opções.</p>
 
-  const busca = rpFCpf_(cpf);
+      <div class="grid two">
+        <div>
+          <label for="nome">Nome completo</label>
+          <input id="nome" type="text" placeholder="Digite o nome completo" autocomplete="name" />
+        </div>
+        <div>
+          <label for="cpf">CPF</label>
+          <input id="cpf" type="text" placeholder="000.000.000-00" inputmode="numeric" />
+          <div class="muted">O CPF é usado para localizar/atualizar sua inscrição.</div>
+        </div>
+      </div>
 
-  return rpFParticipantes_().find(
-    p => rpFCpf_(p.cpf) === busca
-  ) || null;
-}
+      <div class="grid two" style="margin-top:10px;">
+        <div>
+          <label for="admissao">Data de admissão</label>
+          <input id="admissao" type="date" />
+          <div class="muted">Prioridade: data mais antiga → maior prioridade.</div>
+        </div>
+        <div class="actions" style="align-items:end;">
+          <button class="btn primary" id="btnContinuar" type="button">Continuar</button>
+        </div>
+      </div>
 
-function rpFPorCodigo_(codigo) {
+      <div id="msgStep1" class="muted" style="margin-top:10px;"></div>
+    </div>
 
-  return rpFParticipantes_().find(
-    p => Number(p.codigo) === Number(codigo)
-  ) || null;
-}
+    <div class="card hidden" id="step2">
+      <h2 class="h2">2) Escolhas (até 3)</h2>
+      <p class="muted" style="margin:0 0 10px 0;">
+        Selecione até 3 preferências (Escola + Turma). Pode enviar com 1 ou 2 opções.
+      </p>
 
-function rpFFinalizado_(p) {
+      <div id="choicesWrap" class="grid" style="gap:10px;"></div>
 
-  return [
-    "CONFIRMADO",
-    "FINALIZADO_REMOCAO",
-    "FINALIZADO_PERMANENCIA",
-    "FINALIZADO",
-    "CANCELADO"
-  ].includes(
-    rpFTexto_(p.situacao)
-  );
-}
+      <div class="actions" style="margin-top:10px; justify-content:space-between;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn secondary" id="btnAddChoice" type="button">+ Adicionar escolha</button>
+          <button class="btn secondary" id="btnVoltar" type="button">Voltar</button>
+        </div>
+        <button class="btn primary" id="btnEnviar" type="button">Enviar escolhas</button>
+      </div>
 
-function rpFFila_(etapa) {
+      <div id="msgStep2" class="muted" style="margin-top:10px;"></div>
+    </div>
 
-  return rpFParticipantes_().filter(p =>
-    Number(p.etapa) === Number(etapa) &&
-    !rpFFinalizado_(p)
-  );
-}
+    <div class="card hidden" id="step3">
+      <h2 class="h2">3) Resultado</h2>
+      <div id="resultBox" class="choice"></div>
 
-function rpFProximo_(etapa) {
+      <div class="divider"></div>
 
-  const fila = rpFFila_(etapa);
+      <div class="actions no-print" style="justify-content:space-between;">
+        <button class="btn secondary" id="btnNovaConsulta" type="button">Nova consulta</button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn secondary" id="btnRecarregar" type="button">Atualizar painel</button>
+          <button class="btn primary" id="btnImprimir" type="button">Gerar comprovante (imprimir)</button>
+        </div>
+      </div>
 
-  return fila.length ? fila[0] : null;
-}
+      <div id="msgStep3" class="muted" style="margin-top:10px;"></div>
+    </div>
+  </section>
 
+  <aside class="card">
+    <h2 class="h2">Painel de Vagas</h2>
+    <p class="muted" style="margin:0 0 10px 0;">
+      Vagas por escola/turma considerando as inscrições da planilha. <b>1 vaga por turma</b>.
+    </p>
+    <div id="vagasTableWrap"></div>
+    <div class="divider"></div>
+    <div class="muted small">
+      <b>Regra:</b> ordena por data de admissão (mais antiga primeiro). Para cada professor(a):
+      tenta 1ª opção; se cheia, tenta 2ª; se cheia, tenta 3ª.
+    </div>
+    <div class="divider"></div>
+    <div class="muted small" id="syncStatus"></div>
+  </aside>
+</main>
 
-/*********************************************************
- 4. VAGAS
-*********************************************************/
+<footer>
+  <div class="foot">
+    <b>Prefeitura Municipal de Contenda – Secretaria Municipal de Educação, Cultura, Esporte e Turismo</b><br/>
+    Seleção de vagas para <b>professores</b> – 1 vaga por turma – prioridade por data de admissão.
+  </div>
+</footer>
 
-function rpFVagas_() {
+<!-- Área de impressão (comprovante) -->
+<div id="printArea">
+  <div class="receipt">
+    <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+      <div>
+        <h2>Comprovante de Inscrição – Seleção de Vagas (Professores)</h2>
+        <div class="muted">Rede Municipal de Ensino de Contenda</div>
+      </div>
+      <div class="box" style="max-width:280px;">
+        <div class="muted">Protocolo</div>
+        <div class="mono" style="font-weight:900; font-size:14px;" id="rcptProtocolo"></div>
+        <div class="muted" style="margin-top:6px;">Data/Hora</div>
+        <div class="mono" id="rcptDataHora"></div>
+      </div>
+    </div>
 
-  const sh = rpFPlanilha_()
-    .getSheetByName("VAGAS_REMOCAO");
+    <div class="divider"></div>
 
-  if (!sh) {
-    throw new Error(
-      "ABA_VAGAS_NAO_ENCONTRADA"
-    );
+    <div class="row">
+      <div class="box">
+        <div class="muted">Nome completo</div>
+        <div style="font-weight:900;" id="rcptNome"></div>
+      </div>
+      <div class="box">
+        <div class="muted">CPF</div>
+        <div class="mono" id="rcptCpf"></div>
+      </div>
+      <div class="box">
+        <div class="muted">Data de admissão</div>
+        <div class="mono" id="rcptAdmissao"></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="box">
+      <div class="muted">Opções informadas</div>
+      <div id="rcptOpcoes" style="margin-top:6px;"></div>
+    </div>
+
+    <div id="rcptObsSRM" class="obs" style="display:none;"></div>
+
+    <div class="divider"></div>
+
+    <div class="box">
+      <div class="muted">Resultado (conforme prioridade por data de admissão)</div>
+      <div style="margin-top:6px; font-weight:900;" id="rcptResultado"></div>
+      <div class="muted" style="margin-top:6px;" id="rcptMotivo"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="sigwrap">
+      <div class="sig">
+        <!-- Insira a imagem da assinatura digital com este nome na mesma pasta do HTML -->
+        <img src="assinatura-digital.png" alt="Assinatura Digital" onerror="this.style.display='none'">
+        <div style="font-weight:900;">Secretaria Municipal de Educação, Cultura, Esporte e Turismo</div>
+        <div class="muted small">Assinatura digital (conforme documento institucional)</div>
+      </div>
+      <div class="muted small" style="max-width:360px;">
+        Este comprovante registra a inscrição realizada no sistema. A alocação depende das vagas disponíveis (1 vaga por turma)
+        e da prioridade por data de admissão.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /**********************
+   * COLE SUA API URL *
+   **********************/
+  const API_URL = "https://script.google.com/macros/s/AKfycbwj9NAYRPz8Gu8dOU7yhVXaAYpSJG4qYmB6uuUWYWm5pxe5Sx1ot30-OuJInW_323Xx/exec";
+
+  /**************************
+   * VAGAS: 1 POR TURMA
+   **************************/
+  const DEFAULT_VAGAS_POR_TURMA = 1;
+
+  /**********************
+   * CATÁLOGO COMPLETO
+   **********************/
+  const CATALOGO = [
+    {
+      escolaId: "PAULINA-URBANIK-STABACH",
+      escolaNome: "ESCOLA MUNICIPAL DO CAMPO PROFESSORA PAULINA URBANIK STABACH",
+      turmas: [
+        { turmaId: "M-INFANTIL-V", turmaNome: "Manhã – Infantil V", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-2-ANO", turmaNome: "Manhã – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-3-ANO", turmaNome: "Manhã – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-4-ANO-A", turmaNome: "Manhã – 4º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-4-ANO-B", turmaNome: "Manhã – 4º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-INFANTIL-IV", turmaNome: "Tarde – Infantil IV", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-SRM", turmaNome: "Tarde – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
+      ],
+    },
+    {
+      escolaId: "JOAO-FRANCO",
+      escolaNome: "Escola Municipal João Franco",
+      turmas: [
+        { turmaId: "M-3-ANO", turmaNome: "Manhã – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-4-ANO", turmaNome: "Manhã – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-2-ANO-A", turmaNome: "Tarde – 2º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-2-ANO-B", turmaNome: "Tarde – 2º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
+      ],
+    },
+    {
+      escolaId: "ANTONIO-BORKOVSKI",
+      escolaNome: "Escola Municipal Vereador Antônio Borkovski",
+      turmas: [
+        { turmaId: "M-INFANTIL-IV", turmaNome: "Manhã – Infantil IV", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-INFANTIL-V", turmaNome: "Manhã – Infantil V", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-1-ANO", turmaNome: "Manhã – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-2-ANO", turmaNome: "Manhã – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-3-ANO-A", turmaNome: "Manhã – 3º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-3-ANO-B", turmaNome: "Manhã – 3º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-4-ANO", turmaNome: "Manhã – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-SRM", turmaNome: "Manhã – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
+
+        { turmaId: "T-INFANTIL-IV", turmaNome: "Tarde – Infantil IV", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-INFANTIL-V", turmaNome: "Tarde – Infantil V", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-2-ANO", turmaNome: "Tarde – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-4-ANO", turmaNome: "Tarde – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-5-ANO", turmaNome: "Tarde – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-SRM", turmaNome: "Tarde – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
+      ],
+    },
+    {
+      escolaId: "RUI-BARBOSA",
+      escolaNome: "Escola Municipal do Campo Rui Barbosa",
+      turmas: [
+        { turmaId: "M-3-ANO", turmaNome: "Manhã – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-4-ANO", turmaNome: "Manhã – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-2-ANO", turmaNome: "Tarde – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+      ],
+    },
+    {
+      escolaId: "BOM-JESUS",
+      escolaNome: "Escola Municipal do Campo Bom Jesus",
+      turmas: [
+        { turmaId: "M-INFANTIL-IV-V", turmaNome: "Manhã – Infantil IV e V", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-1-ANO", turmaNome: "Manhã – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-2-ANO", turmaNome: "Manhã – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-3-ANO", turmaNome: "Manhã – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-4-ANO", turmaNome: "Manhã – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+      ],
+    },
+    {
+      escolaId: "IVO-BARBOSA",
+      escolaNome: "Escola Municipal Prefeito Ivo Barbosa",
+      turmas: [
+        { turmaId: "M-INFANTIL-IV", turmaNome: "Manhã – Infantil IV", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-INFANTIL-V", turmaNome: "Manhã – Infantil V", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-1-ANO", turmaNome: "Manhã – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-2-ANO", turmaNome: "Manhã – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-3-ANO", turmaNome: "Manhã – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-4-ANO", turmaNome: "Manhã – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-SRM", turmaNome: "Manhã – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
+
+        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-2-ANO", turmaNome: "Tarde – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-3-ANO", turmaNome: "Tarde – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-4-ANO", turmaNome: "Tarde – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-5-ANO", turmaNome: "Tarde – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-SRM", turmaNome: "Tarde – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
+      ],
+    },
+    {
+      escolaId: "CIVICO-MILITAR-LEONOR",
+      escolaNome: "Escola Municipal Cívico Militar Leonor de Moura Carvalho",
+      turmas: [
+        { turmaId: "M-1-ANO", turmaNome: "Manhã – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-2-ANO-A", turmaNome: "Manhã – 2º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-2-ANO-B", turmaNome: "Manhã – 2º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-3-ANO", turmaNome: "Manhã – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-4-ANO", turmaNome: "Manhã – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-5-ANO-A", turmaNome: "Manhã – 5º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-5-ANO-B", turmaNome: "Manhã – 5º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-SRM", turmaNome: "Manhã – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
+
+        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-2-ANO", turmaNome: "Tarde – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-3-ANO", turmaNome: "Tarde – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-4-ANO-A", turmaNome: "Tarde – 4º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-4-ANO-B", turmaNome: "Tarde – 4º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-5-ANO", turmaNome: "Tarde – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-SRM", turmaNome: "Tarde – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
+      ],
+    },
+    {
+      escolaId: "VANILDA-DIERZWA",
+      escolaNome: "Escola Municipal professora Vanilda Dierzwa",
+      turmas: [
+        { turmaId: "M-1-ANO", turmaNome: "Manhã – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-2-ANO", turmaNome: "Manhã – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-4-ANO-A", turmaNome: "Manhã – 4º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-4-ANO-B", turmaNome: "Manhã – 4º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-SRM", turmaNome: "Manhã – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
+
+        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-2-ANO", turmaNome: "Tarde – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-3-ANO-A", turmaNome: "Tarde – 3º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-3-ANO-B", turmaNome: "Tarde – 3º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-4-ANO", turmaNome: "Tarde – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-5-ANO", turmaNome: "Tarde – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-SRM", turmaNome: "Tarde – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
+      ],
+    },
+    {
+      escolaId: "NS-GRACAS",
+      escolaNome: "Escola Municipal do Campo Nossa Senhora das Graças",
+      turmas: [
+        { turmaId: "M-INFANTIL-IV", turmaNome: "Manhã – Infantil IV", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-INFANTIL-V", turmaNome: "Manhã – Infantil V", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-1-ANO", turmaNome: "Manhã – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-2-ANO", turmaNome: "Manhã – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-3-ANO", turmaNome: "Manhã – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-4-ANO", turmaNome: "Manhã – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "M-SRM", turmaNome: "Manhã – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
+
+        { turmaId: "T-INFANTIL-IV", turmaNome: "Tarde – Infantil IV", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-INFANTIL-V", turmaNome: "Tarde – Infantil V", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-2-ANO", turmaNome: "Tarde – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-3-ANO", turmaNome: "Tarde – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-4-ANO", turmaNome: "Tarde – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-5-ANO", turmaNome: "Tarde – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
+        { turmaId: "T-SRM", turmaNome: "Tarde – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
+      ],
+    },
+  ];
+
+  /*****************
+   * UTILITÁRIOS
+   *****************/
+  const $ = (id) => document.getElementById(id);
+  const onlyDigits = (str) => (str || "").replace(/\D/g, "");
+
+  function formatCPF(value){
+    const d = onlyDigits(value).slice(0, 11);
+    const p1 = d.slice(0,3), p2=d.slice(3,6), p3=d.slice(6,9), p4=d.slice(9,11);
+    let out = p1;
+    if (p2) out += "." + p2;
+    if (p3) out += "." + p3;
+    if (p4) out += "-" + p4;
+    return out;
   }
 
-  const dados = sh.getDataRange()
-    .getDisplayValues();
-
-  if (!dados.length) {
-    throw new Error(
-      "ABA_VAGAS_SEM_CABECALHO"
-    );
+  function maskCPF(cpfDigits){
+    const d = onlyDigits(cpfDigits);
+    if (d.length !== 11) return cpfDigits;
+    return `${d.slice(0,3)}.***.***-${d.slice(9,11)}`;
   }
 
-  const cab = dados[0].map(
-    chaveCabecalho_
-  );
+  function isValidCPF(cpf){
+    cpf = onlyDigits(cpf);
+    if (cpf.length !== 11) return false;
+    if (/^(\d)\1+$/.test(cpf)) return false;
 
-  const ce = cab.indexOf("ESCOLAID");
-  const cv = cab.indexOf("VAGASTOTAL");
-
-  if (ce < 0 || cv < 0) {
-    throw new Error(
-      "CABECALHOS_VAGAS_INVALIDOS"
-    );
-  }
-
-  const mapa = {};
-
-  dados.slice(1).forEach((linha, i) => {
-
-    const escola = String(
-      linha[ce] || ""
-    ).trim();
-
-    if (!escola) return;
-
-    const chave = rpFTexto_(escola);
-
-    if (mapa[chave]) {
-      throw new Error(
-        "ESCOLA_DUPLICADA_" + escola
-      );
-    }
-
-    const texto = String(
-      linha[cv] === ""
-        ? "0"
-        : linha[cv]
-    ).trim();
-
-    if (!/^\d+$/.test(texto)) {
-      throw new Error(
-        "QUANTIDADE_INVALIDA_LINHA_" +
-        (i + 2)
-      );
-    }
-
-    const quantidade = Number(texto);
-
-    if (!Number.isSafeInteger(quantidade)) {
-      throw new Error(
-        "QUANTIDADE_FORA_DO_LIMITE"
-      );
-    }
-
-    mapa[chave] = {
-      escola: escola,
-      quantidade: quantidade,
-      linha: i + 2,
-      coluna: cv + 1
+    const calc = (base, factor) => {
+      let total = 0;
+      for (let i=0; i<base.length; i++){
+        total += parseInt(base[i],10) * (factor - i);
+      }
+      const rest = (total * 10) % 11;
+      return (rest === 10) ? 0 : rest;
     };
-  });
 
-  return mapa;
-}
-
-function rpFVagasDisponiveis_(origem) {
-
-  const mapa = rpFVagas_();
-
-  return Object.keys(mapa)
-    .map(k => mapa[k])
-    .filter(v =>
-      v.quantidade > 0 &&
-      rpFTexto_(v.escola) !==
-        rpFTexto_(origem)
-    )
-    .map(v => ({
-      escolaId: v.escola,
-      escola: v.escola,
-      quantidade: v.quantidade
-    }))
-    .sort((a, b) =>
-      a.escola.localeCompare(
-        b.escola, "pt-BR"
-      )
-    );
-}
-
-
-/*********************************************************
- 5. OPERAÇÕES E HISTÓRICO
-*********************************************************/
-
-function rpFLerOperacao_(id) {
-
-  const texto = rpFProps_().getProperty(
-    rpFChave_("OP", id)
-  );
-
-  return texto
-    ? JSON.parse(texto)
-    : null;
-}
-
-function rpFSalvarOperacao_(op) {
-
-  rpFProps_().setProperty(
-    rpFChave_("OP", op.id),
-    JSON.stringify(op)
-  );
-}
-
-function rpFOpsPendentes_() {
-
-  const todas = rpFProps_()
-    .getProperties();
-
-  return Object.keys(todas)
-    .filter(k =>
-      k.startsWith(
-        rpFChave_("OP", "")
-      )
-    )
-    .map(k => JSON.parse(todas[k]))
-    .filter(op =>
-      op.estado !== "CONCLUIDA" &&
-      op.estado !== "CANCELADA"
-    );
-}
-
-function rpFExigirSemFalhas_() {
-
-  const pendentes = rpFOpsPendentes_();
-
-  if (pendentes.length) {
-    throw new Error(
-      "OPERACAO_PENDENTE_DE_RECUPERACAO: " +
-      pendentes.map(o => o.id).join(",")
-    );
-  }
-}
-
-function rpFHistoricoExiste_(id, decisao) {
-
-  const sh = rpFPlanilha_()
-    .getSheetByName("HISTORICO_REMOCAO");
-
-  if (!sh || sh.getLastRow() < 2) {
-    return false;
+    const d1 = calc(cpf.slice(0,9), 10);
+    const d2 = calc(cpf.slice(0,10), 11);
+    return d1 === parseInt(cpf[9],10) && d2 === parseInt(cpf[10],10);
   }
 
-  return sh.getDataRange()
-    .getDisplayValues()
-    .slice(1)
-    .some(l =>
-      String(l[1]) === String(id) &&
-      String(l[6]) === String(decisao)
-    );
-}
-
-function rpFHistorico_(op, decisao) {
-
-  if (rpFHistoricoExiste_(
-    op.id, decisao
-  )) {
-    return;
+  function findEscola(escolaId){ return CATALOGO.find(e => e.escolaId === escolaId); }
+  function findTurma(escolaId, turmaId){
+    const esc = findEscola(escolaId);
+    return esc?.turmas?.find(t => t.turmaId === turmaId);
+  }
+  function labelOpcao(escolaId, turmaId){
+    const esc = findEscola(escolaId);
+    const tur = findTurma(escolaId, turmaId);
+    if (!esc || !tur) return "(opção inválida)";
+    return `${esc.escolaNome} — ${tur.turmaNome}`;
   }
 
-  const sh = rpFPlanilha_()
-    .getSheetByName("HISTORICO_REMOCAO");
-
-  if (!sh) {
-    throw new Error(
-      "HISTORICO_NAO_ENCONTRADO"
-    );
-  }
-
-  sh.appendRow([
-    new Date(),
-    op.id,
-    op.codigo,
-    op.nome,
-    op.cpf,
-    op.etapa,
-    decisao,
-    op.origem,
-    op.destino,
-    op.destino,
-    op.comprovante || ""
-  ]);
-}
-
-
-/*********************************************************
- 6. CREDENCIAIS INDIVIDUAIS
-
- A credencial é gerada administrativamente.
-
- Nunca publicar a função de emissão como
- endpoint público.
-
- O CPF sozinho não autoriza decisões.
-*********************************************************/
-
-function rpFValidarCredencial_(cpf, token) {
-
-  if (!token) return false;
-
-  const texto = rpFProps_().getProperty(
-    rpFChave_("ACESSO", rpFCpf_(cpf))
-  );
-
-  if (!texto) return false;
-
-  const registro = JSON.parse(texto);
-
-  if (
-    registro.expira &&
-    Date.now() > registro.expira
-  ) {
-    return false;
-  }
-
-  return registro.hash === rpFHash_(
-    rpFCpf_(cpf) + ":" + token
-  );
-}
-
-function rpFGerarCredencial_(cpf) {
-
-  rpFPlanilha_();
-
-  const p = rpFPorCpf_(cpf);
-
-  if (!p) {
-    throw new Error(
-      "PROFESSOR_NAO_INSCRITO"
-    );
-  }
-
-  const token =
-    Utilities.getUuid() +
-    Utilities.getUuid();
-
-  rpFProps_().setProperty(
-    rpFChave_(
-      "ACESSO", rpFCpf_(cpf)
-    ),
-    JSON.stringify({
-      hash: rpFHash_(
-        rpFCpf_(cpf) + ":" + token
-      ),
-      expira: Date.now() +
-        7 * 24 * 60 * 60 * 1000
-    })
-  );
-
-  return {
-    codigo: Number(p.codigo),
-    nome: p.nome,
-    credencial: token,
-    validadeDias: 7
-  };
-}
-
-
-/*********************************************************
- 7. PENDÊNCIA E ALERTA DE 60 MINUTOS
-*********************************************************/
-
-function rpFLerPendencia_(cpf) {
-
-  const texto = rpFProps_().getProperty(
-    rpFChave_("PENDENCIA", rpFCpf_(cpf))
-  );
-
-  return texto
-    ? JSON.parse(texto)
-    : null;
-}
-
-function rpFRegistrarPendencia_(p, motivo) {
-
-  const cpf = rpFCpf_(p.cpf);
-  const anterior = rpFLerPendencia_(cpf);
-
-  if (
-    anterior &&
-    anterior.etapa === Number(p.etapa) &&
-    anterior.motivo === motivo
-  ) {
-    return anterior;
-  }
-
-  const pendencia = {
-    id: rpFId_(),
-    cpf: cpf,
-    codigo: Number(p.codigo),
-    nome: p.nome,
-    etapa: Number(p.etapa),
-    motivo: motivo,
-    inicio: Date.now(),
-    alertaEnviado: false,
-    notificacaoEnviada: false
-  };
-
-  rpFProps_().setProperty(
-    rpFChave_("PENDENCIA", cpf),
-    JSON.stringify(pendencia)
-  );
-
-  return pendencia;
-}
-
-function rpFEncerrarPendencia_(cpf) {
-
-  rpFProps_().deleteProperty(
-    rpFChave_("PENDENCIA", rpFCpf_(cpf))
-  );
-}
-
-function rpFEmailProfessor_(cpf) {
-
-  const sh = rpFPlanilha_()
-    .getSheetByName("LOTACAO_ED_INF");
-
-  if (!sh) return "";
-
-  const dados = sh.getDataRange()
-    .getDisplayValues();
-
-  if (dados.length < 2) return "";
-
-  const cab = dados[0].map(
-    chaveCabecalho_
-  );
-
-  const cCpf = cab.indexOf("CPF");
-
-  const cEmail = cab.findIndex(c =>
-    [
-      "EMAIL",
-      "EMAILPESSOAL",
-      "EMAILPROFESSOR"
-    ].includes(c)
-  );
-
-  if (cCpf < 0 || cEmail < 0) {
-    return "";
-  }
-
-  const encontrados = dados.slice(1)
-    .filter(l =>
-      rpFCpf_(l[cCpf]) === rpFCpf_(cpf)
-    );
-
-  if (encontrados.length !== 1) {
-    return "";
-  }
-
-  const email = String(
-    encontrados[0][cEmail] || ""
-  ).trim();
-
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-    ? email
-    : "";
-}
-
-function rpFNotificarPendencia_(p, pendencia) {
-
-  if (!RP_FINAL.EMAIL_ATIVO) {
-    return false;
-  }
-
-  if (pendencia.notificacaoEnviada) {
-    return false;
-  }
-
-  const email = rpFEmailProfessor_(p.cpf);
-
-  if (!email) return false;
-
-  const assunto =
-    "Concurso de Remoção — Sua decisão";
-
-  const texto =
-    "Prezado(a) " + p.nome + ",\n\n" +
-    "Chegou sua vez no Concurso de Remoção " +
-    "da Rede Municipal de Contenda.\n\n" +
-    "Classificação: " + p.codigo + "\n" +
-    "Etapa: " + p.etapa + "\n" +
-    "Situação: " + pendencia.motivo + "\n\n" +
-    "Acesse a página oficial do concurso " +
-    "utilizando sua credencial individual.\n\n" +
-    "Secretaria Municipal de Educação.";
-
-  MailApp.sendEmail(
-    email,
-    assunto,
-    texto
-  );
-
-  pendencia.notificacaoEnviada = true;
-
-  rpFProps_().setProperty(
-    rpFChave_(
-      "PENDENCIA", rpFCpf_(p.cpf)
-    ),
-    JSON.stringify(pendencia)
-  );
-
-  return true;
-}
-
-function rpFVerificarAlertas_() {
-
-  if (!RP_FINAL.EMAIL_ATIVO) {
-    return {
-      ok: true,
-      emailsAtivos: false,
-      alertasEnviados: 0
-    };
-  }
-
-  const admin = rpFProps_().getProperty(
-    "EMAIL_ALERTA_REMOCAO"
-  );
-
-  if (
-    !admin ||
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(admin)
-  ) {
-    return rpFErro_(
-      "EMAIL_ADMINISTRATIVO_NAO_CONFIGURADO"
-    );
-  }
-
-  const todas = rpFProps_().getProperties();
-
-  let enviados = 0;
-
-  Object.keys(todas)
-    .filter(k =>
-      k.startsWith(
-        rpFChave_("PENDENCIA", "")
-      )
-    )
-    .forEach(chave => {
-
-      const pendencia = JSON.parse(
-        todas[chave]
-      );
-
-      if (pendencia.alertaEnviado) {
-        return;
+  function cloneVagasBase(){
+    const map = {};
+    for (const e of CATALOGO){
+      for (const t of e.turmas){
+        map[`${e.escolaId}|${t.turmaId}`] = t.vagas; // 1 vaga por turma
       }
+    }
+    return map;
+  }
 
-      const minutos =
-        (Date.now() - pendencia.inicio) /
-        60000;
+  function protocoloFrom(cpfDigits, admDate){
+    const last4 = onlyDigits(cpfDigits).slice(-4);
+    const stamp = Date.now().toString(36).toUpperCase();
+    const adm = String(admDate || "").replaceAll("-","");
+    return `CTD-${adm}-${last4}-${stamp}`;
+  }
 
-      if (
-        minutos <
-        RP_FINAL.ALERTA_MINUTOS
-      ) {
-        return;
-      }
+  function hasSRM(opcoes){
+    return (opcoes || []).some(o => String(o.turmaId || "").toUpperCase().includes("SRM"));
+  }
 
-      const p = rpFPorCpf_(
-        pendencia.cpf
-      );
-
-      if (
-        !p ||
-        rpFFinalizado_(p) ||
-        Number(p.etapa) !== pendencia.etapa
-      ) {
-        rpFEncerrarPendencia_(
-          pendencia.cpf
-        );
-        return;
-      }
-
-      MailApp.sendEmail(
-        admin,
-        "Alerta — Concurso de Remoção",
-        "O professor de classificação " +
-        pendencia.codigo +
-        " está aguardando decisão há " +
-        Math.floor(minutos) +
-        " minutos.\n\n" +
-        "Professor: " + pendencia.nome +
-        "\nEtapa: " + pendencia.etapa +
-        "\nMotivo: " + pendencia.motivo +
-        "\n\nA classificação não foi alterada."
-      );
-
-      pendencia.alertaEnviado = true;
-
-      rpFProps_().setProperty(
-        chave,
-        JSON.stringify(pendencia)
-      );
-
-      enviados++;
+  /*******************************
+   * ALOCAÇÃO POR DATA DE ADMISSÃO
+   *******************************/
+  function alocarTodos(inscricoes){
+    const ordenadas = [...inscricoes].sort((a,b)=>{
+      const da = new Date(a.dataAdmissao).getTime();
+      const db = new Date(b.dataAdmissao).getTime();
+      if (da !== db) return da - db;
+      const ta = new Date(a.timestamp || 0).getTime();
+      const tb = new Date(b.timestamp || 0).getTime();
+      return ta - tb;
     });
 
-  return {
-    ok: true,
-    alertasEnviados: enviados
-  };
-}
+    const vagas = cloneVagasBase();
+    const resultado = {};
 
+    for (const ins of ordenadas){
+      const cpf = String(ins.cpf || "").replace(/\D/g,"");
+      let alocado = null;
 
-/*********************************************************
- 8. CONSULTA DA PÁGINA
-*********************************************************/
+      for (const opc of (ins.opcoes || [])){
+        const key = `${opc.escolaId}|${opc.turmaId}`;
+        if ((vagas[key] ?? 0) > 0){
+          vagas[key] -= 1;
+          alocado = { escolaId: opc.escolaId, turmaId: opc.turmaId };
+          break;
+        }
+      }
 
-function rpIntegradoConsultar_(dados) {
-
-  try {
-
-    rpFPlanilha_();
-
-    const cpf = rpFCpf_(dados.cpf);
-
-    if (!rpFValidarCredencial_(
-      cpf, dados.credencial
-    )) {
-      return rpFErro_(
-        "ACESSO_NAO_AUTORIZADO",
-        "Credencial inválida ou expirada."
-      );
+      resultado[cpf] = alocado ? {
+        status: "ALOCADO",
+        opcaoAlocada: alocado,
+        motivo: "Vaga confirmada conforme prioridade por data de admissão."
+      } : {
+        status: "LISTA_ESPERA",
+        opcaoAlocada: null,
+        motivo: "Sem vagas disponíveis nas opções informadas após aplicar a prioridade."
+      };
     }
 
-    const p = rpFPorCpf_(cpf);
-
-    if (!p) {
-      return rpFErro_("NAO_INSCRITO");
-    }
-
-    const config = rpFConfig_();
-
-    const proximo = rpFProximo_(
-      config.etapa
-    );
-
-    const minhaVez = !!proximo &&
-      Number(proximo.codigo) ===
-      Number(p.codigo);
-
-    const etapaCorreta =
-      Number(p.etapa) === config.etapa;
-
-    const finalizado = rpFFinalizado_(p);
-
-    const podeDecidir =
-      config.ativo &&
-      etapaCorreta &&
-      minhaVez &&
-      !finalizado &&
-      rpFOpsPendentes_().length === 0;
-
-    return {
-      ok: true,
-
-      candidato: {
-        codigo: Number(p.codigo),
-        nome: p.nome,
-        lotacaoAtual: p.lotacaoAtual,
-        etapa: Number(p.etapa),
-        situacao: p.situacao,
-        preferencia:
-          p.escolaEscolhida || "",
-        tipoDecisao:
-          p.tipoDecisao || ""
-      },
-
-      etapaAtiva: config.etapa,
-      processoAtivo: config.ativo,
-      minhaVez: minhaVez,
-      podeDecidir: podeDecidir,
-
-      podeEscolher:
-        config.ativo &&
-        etapaCorreta &&
-        !finalizado,
-
-      finalizado: finalizado,
-
-      proximaClassificacao: proximo
-        ? Number(proximo.codigo)
-        : null,
-
-      vagas: config.ativo &&
-        etapaCorreta &&
-        !finalizado
-          ? rpFVagasDisponiveis_(
-              p.lotacaoAtual
-            )
-          : [],
-
-      mensagem: finalizado
-        ? "Participação encerrada."
-        : minhaVez
-          ? "Chegou sua vez."
-          : "Aguarde sua classificação."
-    };
-
-  } catch (e) {
-
-    return rpFErro_(
-      "ERRO_CONSULTA",
-      String(e.message || e)
-    );
-  }
-}
-
-
-/*********************************************************
- 9. GRAVAÇÃO DE DECISÕES
-
- A operação é registrada antes das alterações.
-
- Se ocorrer erro depois do início da gravação,
- o sistema bloqueia novas movimentações.
-*********************************************************/
-
-function rpFExecutarDecisao_(p, tipo, destino, id) {
-
-  const ss = rpFPlanilha_();
-
-  const shAcesso = ss.getSheetByName(
-    "ACESSO_REMOCAO"
-  );
-
-  const shVagas = ss.getSheetByName(
-    "VAGAS_REMOCAO"
-  );
-
-  const origem = String(
-    p.lotacaoAtual || ""
-  ).trim();
-
-  const etapa = Number(p.etapa);
-
-  const op = {
-    id: id,
-    codigo: Number(p.codigo),
-    nome: p.nome,
-    cpf: rpFCpf_(p.cpf),
-    etapa: etapa,
-    tipo: tipo,
-    origem: origem,
-    destino: destino || origem,
-    comprovante: id,
-    estado: "PREPARADA"
-  };
-
-  let vagaOrigem = null;
-  let vagaDestino = null;
-
-  if (tipo === "ESCOLHER_VAGA") {
-
-    const vagas = rpFVagas_();
-
-    vagaOrigem = vagas[
-      rpFTexto_(origem)
-    ];
-
-    vagaDestino = vagas[
-      rpFTexto_(destino)
-    ];
-
-    if (
-      !vagaOrigem ||
-      !vagaDestino ||
-      rpFTexto_(origem) ===
-        rpFTexto_(destino)
-    ) {
-      return rpFErro_(
-        "DESTINO_INVALIDO"
-      );
-    }
-
-    if (vagaDestino.quantidade <= 0) {
-      return rpFErro_(
-        "VAGA_INDISPONIVEL"
-      );
-    }
-
-    op.destino = vagaDestino.escola;
-
-    op.vagasOrigemAntes =
-      vagaOrigem.quantidade;
-
-    op.vagasDestinoAntes =
-      vagaDestino.quantidade;
+    return { resultado, vagasRestantes: vagas };
   }
 
-  if (
-    tipo === "PROXIMA_ETAPA" &&
-    etapa >= 3
-  ) {
-    return rpFErro_(
-      "ULTIMA_ETAPA"
-    );
+  /*****************
+   * API (Sheets)
+   *****************/
+  async function apiGetInscricoes(){
+    const res = await fetch(API_URL, { method:"GET" });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Falha ao buscar inscrições");
+    return data.inscricoes || [];
   }
 
-  rpFSalvarOperacao_(op);
-
-  try {
-
-    if (tipo === "ESCOLHER_VAGA") {
-
-      shVagas.getRange(
-        vagaDestino.linha,
-        vagaDestino.coluna
-      ).setValue(
-        vagaDestino.quantidade - 1
-      );
-
-      shVagas.getRange(
-        vagaOrigem.linha,
-        vagaOrigem.coluna
-      ).setValue(
-        vagaOrigem.quantidade + 1
-      );
-
-      shAcesso.getRange(
-        p._linha, 6
-      ).setValue(
-        vagaDestino.escola
-      );
-
-      shAcesso.getRange(
-        p._linha, 8
-      ).setValue(
-        RP_FINAL.STATUS.REMOVIDO
-      );
-
-    } else if (tipo === "MANTER") {
-
-      shAcesso.getRange(
-        p._linha, 8
-      ).setValue(
-        RP_FINAL.STATUS.PERMANENCIA
-      );
-
-    } else if (tipo === "PROXIMA_ETAPA") {
-
-      shAcesso.getRange(
-        p._linha, 8
-      ).setValue(
-        RP_FINAL.STATUS.AGUARDANDO_ETAPA
-      );
-
-      shAcesso.getRange(
-        p._linha, 9
-      ).setValue(etapa + 1);
-    }
-
-    shAcesso.getRange(
-      p._linha, 10
-    ).setValue(
-      tipo === "ESCOLHER_VAGA"
-        ? op.destino
-        : ""
-    );
-
-    shAcesso.getRange(
-      p._linha, 11
-    ).setValue(new Date());
-
-    shAcesso.getRange(
-      p._linha, 12
-    ).setValue(tipo);
-
-    shAcesso.getRange(
-      p._linha, 13
-    ).setValue(id);
-
-    shAcesso.getRange(
-      p._linha, 14
-    ).setValue(id);
-
-    SpreadsheetApp.flush();
-
-    const atualizado = rpFPorCodigo_(
-      p.codigo
-    );
-
-    if (!atualizado) {
-      throw new Error(
-        "PROFESSOR_NAO_ENCONTRADO_APOS_GRAVACAO"
-      );
-    }
-
-    if (tipo === "ESCOLHER_VAGA") {
-
-      const depois = rpFVagas_();
-
-      if (
-        depois[rpFTexto_(origem)]
-          .quantidade !==
-          vagaOrigem.quantidade + 1 ||
-        depois[rpFTexto_(destino)]
-          .quantidade !==
-          vagaDestino.quantidade - 1 ||
-        rpFTexto_(
-          atualizado.lotacaoAtual
-        ) !== rpFTexto_(destino)
-      ) {
-        throw new Error(
-          "FALHA_CONFERENCIA_TRANSFERENCIA"
-        );
-      }
-
-    } else {
-
-      if (
-        rpFTexto_(
-          atualizado.lotacaoAtual
-        ) !== rpFTexto_(origem)
-      ) {
-        throw new Error(
-          "LOTACAO_ALTERADA_INDEVIDAMENTE"
-        );
-      }
-
-      if (
-        tipo === "PROXIMA_ETAPA" &&
-        Number(atualizado.etapa) !==
-          etapa + 1
-      ) {
-        throw new Error(
-          "FALHA_CONFERENCIA_ETAPA"
-        );
-      }
-    }
-
-    rpFHistorico_(
-      op,
-      tipo === "ESCOLHER_VAGA"
-        ? "REMOCAO_CONFIRMADA"
-        : tipo
-    );
-
-    op.estado = "CONCLUIDA";
-
-    rpFSalvarOperacao_(op);
-
-    rpFEncerrarPendencia_(
-      p.cpf
-    );
-
-    return {
-      ok: true,
-      codigo: op.codigo,
-      decisao: tipo,
-      origem: origem,
-      destino: op.destino,
-      lotacaoAtual:
-        tipo === "ESCOLHER_VAGA"
-          ? op.destino
-          : origem,
-      etapa: tipo === "PROXIMA_ETAPA"
-        ? etapa + 1
-        : etapa,
-      vagasAlteradas:
-        tipo === "ESCOLHER_VAGA",
-      comprovanteId: id,
-      operacaoId: id
-    };
-
-  } catch (e) {
-
-    op.estado = "RECUPERACAO_NECESSARIA";
-    op.erro = String(
-      e.message || e
-    );
-
-    rpFSalvarOperacao_(op);
-
-    throw e;
-  }
-}
-
-
-/*********************************************************
- 10. PREFERÊNCIA ANTECIPADA
-
- Não movimenta vagas.
- Não libera lotação.
- Não reserva a instituição escolhida.
-*********************************************************/
-
-function rpFRegistrarPreferencia_(p, escola, id) {
-  const vagas = rpFVagas_();
-  const destino = vagas[rpFTexto_(escola)];
-  if (!destino || destino.quantidade <= 0) return rpFErro_("VAGA_INDISPONIVEL");
-  if (rpFTexto_(destino.escola) === rpFTexto_(p.lotacaoAtual)) return rpFErro_("PROPRIA_LOTACAO");
-  const situacao = rpFTexto_(p.situacao);
-  if (rpFTexto_(p.tipoDecisao) === "PREFERENCIA" && situacao !== "NOVA_ESCOLHA")
-    return rpFErro_("PREFERENCIA_JA_REGISTRADA");
-  const op = {id:id,codigo:Number(p.codigo),nome:p.nome,cpf:rpFCpf_(p.cpf),
-    etapa:Number(p.etapa),tipo:"PREFERENCIA",origem:p.lotacaoAtual,
-    destino:destino.escola,comprovante:"",estado:"PREPARADA"};
-  rpFSalvarOperacao_(op);
-  try {
-    const sh=rpFPlanilha_().getSheetByName("ACESSO_REMOCAO");
-    sh.getRange(p._linha,8).setValue(RP_FINAL.STATUS.AGUARDANDO);
-    sh.getRange(p._linha,10).setValue(destino.escola);
-    sh.getRange(p._linha,11).setValue(new Date());
-    sh.getRange(p._linha,12).setValue("PREFERENCIA");
-    // N é reservado à operação de decisão final; preferência fica no histórico.
-    SpreadsheetApp.flush();
-    rpFHistorico_(op,"PREFERENCIA");
-    op.estado="CONCLUIDA";rpFSalvarOperacao_(op);rpFEncerrarPendencia_(p.cpf);
-    return {ok:true,decisao:"PREFERENCIA",escolaEscolhida:destino.escola,
-      vagasAlteradas:false,mensagem:"Preferência registrada, sem reserva de vaga."};
-  } catch(e) {
-    op.estado="RECUPERACAO_NECESSARIA";op.erro=String(e.message||e);
-    rpFSalvarOperacao_(op);throw e;
-  }
-}
-
-
-/*********************************************************
- 11. PROCESSAMENTO MANUAL DA FILA
-
- Executar com o bloqueio já adquirido.
-
- Não ultrapassa professor pendente.
-
- Quando encontra preferência indisponível,
- marca NOVA_ESCOLHA e aguarda decisão.
-*********************************************************/
-
-function rpFProcessarFilaInterno_() {
-  // Mantida apenas para compatibilidade. Não executa movimentações.
-  return rpFErro_("PROCESSAMENTO_MANUAL_OBRIGATORIO",
-    "Utilize processarRemocaoManual no editor do Apps Script.");
-}
-
-function rpFProcessarFila_() {
-  return rpFErro_("PROCESSAMENTO_MANUAL_OBRIGATORIO",
-    "Utilize processarRemocaoManual no editor do Apps Script.");
-}
-
-/**
- * COMANDO ADMINISTRATIVO MANUAL.
- * Confirma preferências em ordem de classificação, sem ultrapassar
- * participante que ainda não registrou preferência ou que precisa
- * fazer nova escolha. O professor com NOVA_ESCOLHA pode enviar outra
- * preferência pelo site, mas a transferência só será efetivada
- * numa nova execução administrativa.
- *
- * A gravação de cada transferência utiliza a rotina existente,
- * com histórico, bloqueio, conferência e idempotência.
- */
-function processarRemocaoManual() {
-  return rpFLock_(() => {
-    rpFExigirEscrita_();
-    const cfg = rpFConfig_();
-    if (!cfg.ativo) return rpFErro_("PROCESSO_INATIVO");
-    if (![1, 2, 3].includes(cfg.etapa)) return rpFErro_("ETAPA_INVALIDA");
-
-    const resultado = {
-      ok: true, modo: "MANUAL", etapa: cfg.etapa,
-      transferencias: [], novasEscolhas: [],
-      aguardando: null, processados: 0
-    };
-    // Um professor por iteração; sempre relê a planilha e as vagas.
-    // O limite é a quantidade de inscritos, para impedir laços infinitos.
-    const limite = rpFParticipantes_().length;
-    for (let i = 0; i < limite; i++) {
-      const p = rpFProximo_(cfg.etapa);
-      if (!p) {
-        resultado.estado = "ETAPA_CONCLUIDA";
-        break;
-      }
-      const situacao = rpFTexto_(p.situacao);
-      const destino = String(p.escolaEscolhida || "").trim();
-      const preferencia = rpFTexto_(p.tipoDecisao) === "PREFERENCIA";
-
-      if (situacao === "NOVA_ESCOLHA") {
-        resultado.aguardando = {codigo:Number(p.codigo), situacao:"NOVA_ESCOLHA"};
-        resultado.estado = "AGUARDANDO_NOVA_ESCOLHA";
-        break;
-      }
-      if (!preferencia || !destino) {
-        resultado.aguardando = {codigo:Number(p.codigo), situacao:situacao || "PENDENTE"};
-        resultado.estado = "AGUARDANDO_PREFERENCIA";
-        break;
-      }
-      const vaga = rpFVagas_()[rpFTexto_(destino)];
-      if (!vaga || vaga.quantidade <= 0) {
-        const sh = rpFPlanilha_().getSheetByName("ACESSO_REMOCAO");
-        sh.getRange(p._linha, 8).setValue(RP_FINAL.STATUS.NOVA_ESCOLHA);
-        SpreadsheetApp.flush();
-        const atualizado = rpFPorCodigo_(p.codigo);
-        rpFRegistrarPendencia_(atualizado, "NOVA_ESCOLHA");
-        resultado.novasEscolhas.push({codigo:Number(p.codigo), escola:destino});
-        resultado.aguardando = {codigo:Number(p.codigo), situacao:"NOVA_ESCOLHA"};
-        resultado.estado = "AGUARDANDO_NOVA_ESCOLHA";
-        break;
-      }
-      // ID estável por professor/etapa/preferência, para não duplicar
-      // uma transferência em caso de nova execução do comando.
-      const id = "MANUAL_" + cfg.etapa + "_" + Number(p.codigo) + "_" +
-        rpFHash_(rpFCpf_(p.cpf) + ":" + destino).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32);
-      const anterior = rpFLerOperacao_(id);
-      if (anterior) {
-        throw new Error("OPERACAO_MANUAL_JA_EXISTENTE_" + id +
-          "_CONFIRA_O_HISTORICO_ANTES_DE_CONTINUAR");
-      }
-      const confirmacao = rpFExecutarDecisao_(p, "ESCOLHER_VAGA", destino, id);
-      if (!confirmacao.ok) {
-        resultado.ok = false;
-        resultado.estado = "INTERRUPCAO";
-        resultado.erro = confirmacao;
-        break;
-      }
-      resultado.transferencias.push({
-        codigo:Number(p.codigo), origem:confirmacao.origem,
-        destino:confirmacao.destino
-      });
-      resultado.processados++;
-    }
-    if (!resultado.estado) resultado.estado = "LIMITE_DE_SEGURANCA_ATINGIDO";
-    Logger.log(JSON.stringify(resultado, null, 2));
-    return resultado;
+  async function apiSaveInscricao(payload){
+  const res = await fetch(API_URL, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(payload)
   });
+
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "Falha ao salvar inscrição");
+  return data;
 }
 
-/*********************************************************
- 12. RECEBIMENTO DAS DECISÕES DA PÁGINA
-*********************************************************/
+  /*****************
+   * UI – VAGAS
+   *****************/
+  async function renderVagasTable(){
+    const inscricoes = await apiGetInscricoes();
+    const { vagasRestantes } = alocarTodos(inscricoes);
 
-function rpIntegradoDecidir_(dados) {
-  try {
-    return rpFLock_(() => {
-      rpFPlanilha_();
-      const cpf=rpFCpf_(dados.cpf);
-      
-const homologacaoSemCodigo =
-  REMOCAO_AMBIENTE_TESTE === true &&
-  rpFPlanilha_().getId() ===
-    REMOCAO_ID_PLANILHA_TESTE &&
-  rpFProps_().getProperty(
-    "RP_HOMOLOGACAO_SEM_CODIGO"
-  ) === "SIM";
+    let html = `<table>
+      <thead><tr><th>Escola</th><th>Turma</th><th>Vagas</th></tr></thead><tbody>`;
 
-if (
-  !homologacaoSemCodigo &&
-  !rpFValidarCredencial_(
-    cpf,
-    dados.credencial
-  )
-) {
-  return rpFErro_(
-    "ACESSO_NAO_AUTORIZADO"
-  );
-}
-      
-const id = String(dados.operacaoId || "").trim();
-
-if (!/^[A-Za-z0-9_-]{8,120}$/.test(id)) {
-  return rpFErro_("OPERACAO_ID_INVALIDO");
-}
-
-const tipo = rpFTexto_(dados.decisao);
-
-      if (!["PREFERENCIA","ESCOLHER_VAGA","MANTER","PROXIMA_ETAPA"].includes(tipo))
-        return rpFErro_("DECISAO_INVALIDA");
-      const anterior=rpFLerOperacao_(id);
-      if (anterior) {
-        const mesma=anterior.cpf===cpf && anterior.tipo===tipo &&
-          (!["PREFERENCIA","ESCOLHER_VAGA"].includes(tipo) ||
-            rpFTexto_(anterior.destino)===rpFTexto_(dados.escola));
-        if (!mesma) return rpFErro_("OPERACAO_ID_REUTILIZADO");
-        return {ok:anterior.estado==="CONCLUIDA",jaRegistrado:true,
-          estado:anterior.estado,operacaoId:id};
+    for (const e of CATALOGO){
+      for (const t of e.turmas){
+        const key = `${e.escolaId}|${t.turmaId}`;
+        const rest = vagasRestantes[key] ?? t.vagas;
+        html += `<tr>
+          <td>${e.escolaNome}</td>
+          <td>${t.turmaNome}</td>
+          <td><b>${rest}</b> / ${t.vagas}</td>
+        </tr>`;
       }
-      rpFExigirEscrita_();
-      const p=rpFPorCpf_(cpf);
-      if (!p) return rpFErro_("NAO_INSCRITO");
-      if (rpFFinalizado_(p)) return rpFErro_("JA_FINALIZADO");
-      const cfg=rpFConfig_();
-      if (!cfg.ativo || Number(p.etapa)!==cfg.etapa) return rpFErro_("ETAPA_NAO_DISPONIVEL");
-      const proximo=rpFProximo_(cfg.etapa);
-      const minhaVez=!!proximo && Number(proximo.codigo)===Number(p.codigo);
-      // A transferência é exclusivamente administrativa no modo manual.
-      if (tipo === "ESCOLHER_VAGA") {
-        return rpFErro_("CONFIRMACAO_EXCLUSIVAMENTE_ADMINISTRATIVA");
-      }
-      let resultado;
-      if (tipo==="PREFERENCIA") {
-        resultado=rpFRegistrarPreferencia_(p,dados.escola,id);
-      } else if (tipo==="ESCOLHER_VAGA") {
-        // Escolha direta é confirmação da transferência, inclusive em NOVA_ESCOLHA.
-        // Não registrar uma preferência que exigiria uma segunda confirmação.
-        resultado=rpFExecutarDecisao_(p,tipo,dados.escola,id);
-      } else {
-        resultado=rpFExecutarDecisao_(p,tipo,"",id);
-      }
-      if (!resultado.ok) return resultado;
-      if (RP_FINAL.PROCESSAMENTO_AUTOMATICO) {
-        try { resultado.continuidade=rpFProcessarFilaInterno_(); }
-        catch(e) { resultado.continuidade={ok:false,motivo:"CONTINUIDADE_INTERROMPIDA",
-          mensagem:String(e.message||e)}; }
-      }
-      return resultado;
+    }
+
+    html += `</tbody></table>`;
+    $("vagasTableWrap").innerHTML = html;
+    $("syncStatus").textContent = `Última atualização: ${new Date().toLocaleString("pt-BR")}. Total de inscrições: ${inscricoes.length}.`;
+  }
+
+  /*****************
+   * UI – ESCOLHAS
+   *****************/
+  function updateButtonsState(){
+    const blocks = $("choicesWrap").querySelectorAll(".choice").length;
+    $("btnAddChoice").disabled = blocks >= 3;
+  }
+  function refreshChoiceBadges(){
+    const blocks = [...$("choicesWrap").querySelectorAll(".choice")];
+    blocks.forEach((b, i) => {
+      const badge = b.querySelector(".badge");
+      if (badge) badge.textContent = `${i+1}ª opção`;
     });
-  } catch(e) {return rpFErro_("PROCESSAMENTO_INTERROMPIDO",String(e.message||e));}
-}
-
-
-/*********************************************************
- 13. MUDANÇA ADMINISTRATIVA DE ETAPA
-
- Não altera lotações.
- Não altera vagas.
-
- Só permite avançar quando não há
- participantes pendentes na etapa atual.
-*********************************************************/
-
-function rpFAbrirEtapaInterno_(novaEtapa) {
-
-  rpFExigirEscrita_();
-
-  const config = rpFConfig_();
-
-  if (
-    ![1, 2, 3].includes(novaEtapa)
-  ) {
-    return rpFErro_(
-      "ETAPA_INVALIDA"
-    );
   }
 
-  if (
-    novaEtapa !== config.etapa + 1
-  ) {
-    return rpFErro_(
-      "SEQUENCIA_DE_ETAPAS_INVALIDA"
-    );
+  function createChoiceBlock(index){
+    const wrap = document.createElement("div");
+    wrap.className = "choice";
+
+    wrap.innerHTML = `
+      <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+        <div><span class="badge">${index+1}ª opção</span> <span class="muted">Selecione escola e turma</span></div>
+        <button class="btn secondary" type="button" style="width:auto; padding:8px 10px;" data-remove>Remover</button>
+      </div>
+
+      <div class="grid two" style="margin-top:10px;">
+        <div>
+          <label>Escola</label>
+          <select data-escola>
+            <option value="">Selecione...</option>
+            ${CATALOGO.map(e => `<option value="${e.escolaId}">${e.escolaNome}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <label>Turma</label>
+          <select data-turma disabled>
+            <option value="">Selecione a escola primeiro...</option>
+          </select>
+        </div>
+      </div>
+      <div class="muted small" style="margin-top:8px;" data-hint></div>
+    `;
+
+    const selEscola = wrap.querySelector("[data-escola]");
+    const selTurma = wrap.querySelector("[data-turma]");
+    const hint = wrap.querySelector("[data-hint]");
+    const btnRemove = wrap.querySelector("[data-remove]");
+
+    selEscola.addEventListener("change", () => {
+      const escolaId = selEscola.value;
+      selTurma.innerHTML = "";
+
+      if (!escolaId){
+        selTurma.disabled = true;
+        selTurma.innerHTML = `<option value="">Selecione a escola primeiro...</option>`;
+        hint.textContent = "";
+        return;
+      }
+
+      const esc = findEscola(escolaId);
+      selTurma.disabled = false;
+      selTurma.innerHTML =
+        `<option value="">Selecione...</option>` +
+        esc.turmas.map(t => `<option value="${t.turmaId}">${t.turmaNome}</option>`).join("");
+
+      hint.textContent = "Consulte o painel de vagas antes de confirmar.";
+    });
+
+    btnRemove.addEventListener("click", () => {
+      wrap.remove();
+      refreshChoiceBadges();
+      updateButtonsState();
+    });
+
+    return wrap;
   }
 
-  if (
-    config.etapa >= 1 &&
-    rpFFila_(config.etapa).length > 0
-  ) {
-    return rpFErro_(
-      "ETAPA_ATUAL_PENDENTE"
-    );
+  function addChoice(){
+    const blocks = $("choicesWrap").querySelectorAll(".choice").length;
+    if (blocks >= 3) return;
+    $("choicesWrap").appendChild(createChoiceBlock(blocks));
+    updateButtonsState();
   }
 
-  alterarConfig_(
-    "ETAPA_ATIVA",
-    novaEtapa
-  );
+  function readChoices(){
+    const blocks = [...$("choicesWrap").querySelectorAll(".choice")];
+    return blocks.map(b => {
+      const escolaId = b.querySelector("[data-escola]").value;
+      const turmaId = b.querySelector("[data-turma]").value;
+      return { escolaId, turmaId };
+    }).filter(o => o.escolaId && o.turmaId);
+  }
 
-  alterarConfig_(
-    "PROCESSO_ATIVO",
-    "SIM"
-  );
+  /*****************
+   * FLUXO DE ETAPAS
+   *****************/
+  function setActiveStep(step){
+    $("step1").classList.toggle("hidden", step !== 1);
+    $("step2").classList.toggle("hidden", step !== 2);
+    $("step3").classList.toggle("hidden", step !== 3);
 
-  return {
-    ok: true,
-    etapaAtiva: novaEtapa,
-    vagasAlteradas: false
-  };
-}
+    $("pillStep1").style.opacity = step === 1 ? "1" : ".75";
+    $("pillStep2").style.opacity = step === 2 ? "1" : ".75";
+    $("pillStep3").style.opacity = step === 3 ? "1" : ".75";
+  }
 
-function rpFAbrirEtapa_(novaEtapa) {
+  function showMsg(id, text, cls){
+    const el = $(id);
+    el.className = cls || "muted";
+    el.textContent = text || "";
+  }
 
-  return rpFLock_(() => {
+  /*****************
+   * EVENTOS
+   *****************/
+  $("cpf").addEventListener("input", (e)=>{ e.target.value = formatCPF(e.target.value); });
 
-    const resultado =
-      rpFAbrirEtapaInterno_(
-        Number(novaEtapa)
-      );
+  $("btnContinuar").addEventListener("click", ()=>{
+    const nome = ($("nome").value || "").trim();
+    const cpf = $("cpf").value;
+    const adm = $("admissao").value;
 
-    if (
-      resultado.ok &&
-      RP_FINAL.PROCESSAMENTO_AUTOMATICO
-    ) {
-      resultado.continuidade =
-        rpFProcessarFilaInterno_();
-    }
+    if (!nome){ showMsg("msgStep1","Informe o nome completo.","status-bad"); return; }
+    if (!isValidCPF(cpf)){ showMsg("msgStep1","CPF inválido. Verifique e tente novamente.","status-bad"); return; }
+    if (!adm){ showMsg("msgStep1","Informe a data de admissão.","status-bad"); return; }
 
-    return resultado;
+    showMsg("msgStep1","");
+    $("choicesWrap").innerHTML = "";
+    addChoice();
+    updateButtonsState();
+    setActiveStep(2);
   });
-}
 
+  $("btnAddChoice").addEventListener("click", ()=> addChoice());
+  $("btnVoltar").addEventListener("click", ()=> setActiveStep(1));
 
-/*********************************************************
- 14. ROTINA AUTOMÁTICA DESATIVADA
+  let lastReceipt = null;
 
- Não instalar gatilho periódico.
+  $("btnEnviar").addEventListener("click", async ()=>{
+    try{
+      if (!API_URL || API_URL.includes("COLE_AQUI")){
+        showMsg("msgStep2","Configure a API_URL (URL do Apps Script) no HTML.","status-bad");
+        return;
+      }
 
- Com GRAVACAO_ATIVA=false, não movimenta
- vagas nem altera a situação dos professores.
-*********************************************************/
+      const nome = ($("nome").value || "").trim();
+      const cpfDigits = onlyDigits($("cpf").value);
+      const adm = $("admissao").value;
+      const opcoes = readChoices();
 
-function rpFRotinaAutomatica() {
-  return {ok:true, modo:"MANUAL", processamentoExecutado:false,
-    mensagem:"Rotina automática desativada."};
-}
+      if (opcoes.length === 0){
+        showMsg("msgStep2","Selecione pelo menos 1 opção (Escola + Turma).","status-bad");
+        return;
+      }
+      const keys = opcoes.map(o => `${o.escolaId}|${o.turmaId}`);
+      if (new Set(keys).size !== keys.length){
+        showMsg("msgStep2","Você repetiu a mesma opção. Escolha opções diferentes.","status-bad");
+        return;
+      }
 
-function rpFInstalarGatilho() {
-  return rpFErro_("GATILHO_DESATIVADO",
-    "O concurso utiliza processamento manual.");
-}
+      showMsg("msgStep2","Salvando inscrição...","muted");
 
-function desativarGatilhosRemocao() {
-  rpFPlanilha_();
-  const nomes = ["rpFRotinaAutomatica", "rpFProcessarFila_", "rpFProcessarFilaInterno_"];
-  let removidos = 0;
-  ScriptApp.getProjectTriggers().forEach(t => {
-    if (nomes.includes(t.getHandlerFunction())) {
-      ScriptApp.deleteTrigger(t);
-      removidos++;
+      await apiSaveInscricao({ nome, cpf: cpfDigits, dataAdmissao: adm, opcoes });
+
+      const inscricoes = await apiGetInscricoes();
+      const { resultado } = alocarTodos(inscricoes);
+      const res = resultado[cpfDigits];
+
+      lastReceipt = {
+        protocolo: protocoloFrom(cpfDigits, adm),
+        dataHora: new Date().toLocaleString("pt-BR"),
+        nome, cpfDigits, adm, opcoes,
+        res
+      };
+
+      renderResultadoAtual(lastReceipt);
+      await renderVagasTable();
+
+      showMsg("msgStep2","");
+      setActiveStep(3);
+      showMsg("msgStep3","Inscrição registrada na planilha e resultado calculado com base no banco.","muted");
+    }catch(err){
+      showMsg("msgStep2", `Erro: ${err.message || err}`, "status-bad");
     }
   });
-  return {ok:true, gatilhosRemovidos:removidos, modo:"MANUAL"};
-}
 
-/*********************************************************
- 15. CONFERÊNCIA DE FALHAS
+  function renderResultadoAtual(receipt){
+    const admBR = receipt.adm.split("-").reverse().join("/");
+    const opcoesTxt = receipt.opcoes.map((o,i)=> `${i+1}ª: ${labelOpcao(o.escolaId, o.turmaId)}`).join("<br/>");
 
- Somente leitura.
+    let statusHtml = "";
+    if (receipt.res?.status === "ALOCADO"){
+      statusHtml = `<div class="status-ok" style="font-weight:900; margin:4px 0 8px 0;">
+        ✅ ALOCADO(A): ${labelOpcao(receipt.res.opcaoAlocada.escolaId, receipt.res.opcaoAlocada.turmaId)}
+      </div>`;
+    }else{
+      statusHtml = `<div class="status-warn" style="font-weight:900; margin:4px 0 8px 0;">
+        ⏳ LISTA DE ESPERA: sem vagas nas opções informadas
+      </div>`;
+    }
 
- A recuperação não é autorizada
- automaticamente, pois é necessário
- conferir o estado das células.
-*********************************************************/
-
-function rpFConferirOperacao_(id) {
-
-  const op = rpFLerOperacao_(id);
-
-  if (!op) {
-    return rpFErro_(
-      "OPERACAO_NAO_ENCONTRADA"
-    );
+    $("resultBox").innerHTML = `
+      <div class="muted small">Protocolo: <b class="mono">${receipt.protocolo}</b></div>
+      <div style="margin-top:6px;"><b>${receipt.nome}</b></div>
+      <div class="muted" style="margin-top:2px;">CPF: <b class="mono">${maskCPF(receipt.cpfDigits)}</b></div>
+      <div class="muted" style="margin-top:2px;">Data de admissão: <b class="mono">${admBR}</b></div>
+      <div class="divider"></div>
+      <div><b>Opções enviadas:</b><br/>${opcoesTxt}</div>
+      <div class="divider"></div>
+      ${statusHtml}
+      <div class="muted small">${receipt.res?.motivo || ""}</div>
+    `;
   }
 
-  const p = rpFPorCodigo_(
-    op.codigo
-  );
-
-  const vagas = rpFVagas_();
-
-  return {
-    ok: true,
-    operacao: op,
-    professor: p ? {
-      codigo: Number(p.codigo),
-      situacao: p.situacao,
-      etapa: Number(p.etapa),
-      lotacaoAtual: p.lotacaoAtual,
-      operacaoId: p.operacaoId
-    } : null,
-    origem: vagas[
-      rpFTexto_(op.origem)
-    ] || null,
-    destino: vagas[
-      rpFTexto_(op.destino)
-    ] || null,
-    historicoRegistrado:
-      rpFHistoricoExiste_(
-        op.id,
-        op.tipo === "ESCOLHER_VAGA"
-          ? "REMOCAO_CONFIRMADA"
-          : op.tipo
-      )
-  };
-}
-
-function rpFListarFalhas_() {
-
-  return {
-    ok: true,
-    operacoesPendentes:
-      rpFOpsPendentes_()
-  };
-}
-
-
-/*********************************************************
- 16. DIAGNÓSTICO COMPLETO
-
- SOMENTE LEITURA.
-*********************************************************/
-
-function diagnosticarRemocaoFinal() {
-
-  const ss = rpFPlanilha_();
-
-  const config = rpFConfig_();
-
-  const participantes =
-    rpFParticipantes_();
-
-  const proximo = rpFProximo_(
-    config.etapa
-  );
-
-  const resultado = {
-
-    ok: true,
-
-    ambiente: "TESTE",
-
-    planilha: ss.getName(),
-
-    moduloConsulta:
-      typeof rpIntegradoConsultar_ ===
-      "function",
-
-    moduloDecisao:
-      typeof rpIntegradoDecidir_ ===
-      "function",
-
-    processoAtivo: config.ativo,
-
-    etapaAtiva: config.etapa,
-
-    totalInscritos:
-      participantes.length,
-
-    proximaClassificacao:
-      proximo
-        ? Number(proximo.codigo)
-        : null,
-
-    proximaSituacao:
-      proximo
-        ? proximo.situacao
-        : null,
-
-    vagas: rpFVagas_(),
-
-    operacoesPendentes:
-      rpFOpsPendentes_(),
-
-    gravacaoAtiva:
-      RP_FINAL.GRAVACAO_ATIVA,
-
-    emailAtivo:
-      RP_FINAL.EMAIL_ATIVO,
-
-    prazoAlertaMinutos:
-      RP_FINAL.ALERTA_MINUTOS,
-
-    nenhumaGravacaoExecutada:
-      true
-  };
-
-  Logger.log(
-    JSON.stringify(
-      resultado, null, 2
-    )
-  );
-
-  return resultado;
-}
-
-
-
-
-/*********************************************************
- COMPLEMENTOS DE HOMOLOGAÇÃO — CONTROLE ADMINISTRATIVO
-*********************************************************/
-function rpFNotificarPendenciaSegura_(p,pendencia) {
-  try { return rpFNotificarPendencia_(p,pendencia); }
-  catch(e) { Logger.log("Notificação pendente: "+String(e.message||e));return false; }
-}
-
-function rpFEncerrarProcesso_() {
-  return rpFLock_(() => {
-    rpFExigirEscrita_();
-    const cfg=rpFConfig_();
-    if (cfg.etapa!==3 || rpFFila_(3).length) return rpFErro_("ETAPAS_PENDENTES");
-    alterarConfig_("PROCESSO_ATIVO","NAO");
-    return {ok:true,processoAtivo:false,vagasAlteradas:false};
+  $("btnImprimir").addEventListener("click", ()=>{
+    if (!lastReceipt){
+      alert("Nenhuma inscrição recente para gerar comprovante.");
+      return;
+    }
+    preencherComprovante(lastReceipt);
+    window.print();
   });
-}
 
-function rpFResumoHomologacao() {
-  const cfg=rpFConfig_();
-  const participantes=rpFParticipantes_();
-  const status={};
-  participantes.forEach(p=>{const s=rpFTexto_(p.situacao);status[s]=(status[s]||0)+1;});
-  const resultado={ok:true,ambiente:"TESTE",etapa:cfg.etapa,processoAtivo:cfg.ativo,
-    total:participantes.length,porSituacao:status,
-    proximo:rpFProximo_(cfg.etapa)?.codigo||null,
-    operacoesPendentes:rpFOpsPendentes_(),
-    gravacaoAtiva:RP_FINAL.GRAVACAO_ATIVA,emailAtivo:RP_FINAL.EMAIL_ATIVO};
-  Logger.log(JSON.stringify(resultado,null,2));return resultado;
-}
+  function preencherComprovante(receipt){
+    $("rcptProtocolo").textContent = receipt.protocolo;
+    $("rcptDataHora").textContent = receipt.dataHora;
+    $("rcptNome").textContent = receipt.nome;
+    $("rcptCpf").textContent = maskCPF(receipt.cpfDigits);
+    $("rcptAdmissao").textContent = receipt.adm.split("-").reverse().join("/");
 
-function rpConsultarCpfInscrito_(cpfInformado) {
-  try {
-    const cpf = rpFCpf_(cpfInformado);
+    $("rcptOpcoes").innerHTML = receipt.opcoes.map((o,i)=> {
+      return `<div><b>${i+1}ª opção:</b> ${labelOpcao(o.escolaId, o.turmaId)}</div>`;
+    }).join("");
 
-    if (!/^\d{11}$/.test(cpf)) {
-      return {
-        ok: false,
-        motivo: "CPF_INVALIDO",
-        mensagem: "CPF incorreto."
-      };
+    // OBS SRM
+    const obsEl = $("rcptObsSRM");
+    if (hasSRM(receipt.opcoes)){
+      obsEl.style.display = "block";
+      obsEl.innerHTML = `
+        <b>Observação – SRM:</b><br/>
+        O(a) professor(a) inscrito(a) na vaga de <b>SRM</b> deverá comparecer na
+        <b>Secretaria Municipal de Educação de Contenda</b> com <b>diploma</b> e <b>certificados</b>,
+        conforme <b>Edital de Vagas</b>.
+      `;
+    }else{
+      obsEl.style.display = "none";
+      obsEl.innerHTML = "";
     }
 
-    // Utiliza a planilha de homologação
-    // e a leitura dos inscritos já existentes.
-    rpFPlanilha_();
-
-    const professor = rpFPorCpf_(cpf);
-
-    if (!professor) {
-      return {
-        ok: false,
-        motivo: "NAO_INSCRITO",
-        mensagem:
-          "Inscrição não realizada para o Concurso de Remoção."
-      };
+    if (receipt.res?.status === "ALOCADO"){
+      $("rcptResultado").textContent = `ALOCADO(A) em: ${labelOpcao(receipt.res.opcaoAlocada.escolaId, receipt.res.opcaoAlocada.turmaId)}`;
+    }else{
+      $("rcptResultado").textContent = "LISTA DE ESPERA (sem vaga nas opções informadas)";
     }
-
-    return {
-      ok: true,
-      inscrito: true,
-      mensagem: "Inscrição localizada."
-    };
-
-  } catch (erro) {
-    return {
-      ok: false,
-      motivo: "ERRO_CONSULTA",
-      mensagem:
-        "Não foi possível verificar a inscrição. Tente novamente."
-    };
+    $("rcptMotivo").textContent = receipt.res?.motivo || "";
   }
-}
 
+  $("btnNovaConsulta").addEventListener("click", ()=>{
+    showMsg("msgStep1","");
+    showMsg("msgStep2","");
+    showMsg("msgStep3","");
+    lastReceipt = null;
+    setActiveStep(1);
+  });
 
-function rpConsultarEscolhaInicial_(cpfInformado) {
-  try {
-    const cpf = rpFCpf_(cpfInformado);
-
-    if (!/^\d{11}$/.test(cpf)) {
-      return {
-        ok: false,
-        motivo: "CPF_INVALIDO",
-        mensagem: "CPF incorreto."
-      };
+  $("btnRecarregar").addEventListener("click", async ()=>{
+    try{
+      await renderVagasTable();
+      showMsg("msgStep3","Painel atualizado.","status-ok");
+    }catch(err){
+      showMsg("msgStep3", `Erro ao atualizar: ${err.message || err}`, "status-bad");
     }
+  });
 
-    rpFPlanilha_();
-
-    const professor = rpFPorCpf_(cpf);
-
-    if (!professor) {
-      return {
-        ok: false,
-        motivo: "NAO_INSCRITO",
-        mensagem:
-          "Inscrição não realizada para o Concurso de Remoção."
-      };
+  // INIT
+  (async ()=>{
+    setActiveStep(1);
+    try{
+      if (API_URL && !API_URL.includes("COLE_AQUI")){
+        await renderVagasTable();
+      }else{
+        $("syncStatus").textContent = "Configure a API_URL no HTML para ativar o painel centralizado.";
+      }
+    }catch(err){
+      $("syncStatus").textContent = "Não foi possível carregar o painel: " + (err.message || err);
     }
-
-    const config = rpFConfig_();
-    const finalizado = rpFFinalizado_(professor);
-
-    const situacao = String(
-      professor.situacao || ""
-    ).trim().toUpperCase();
-
-    const lotacaoOriginal = String(
-      professor.lotacaoOriginal || ""
-    ).trim();
-
-    const lotacaoAtual = String(
-      professor.lotacaoAtual || ""
-    ).trim();
-
-    const escolaEscolhida = String(
-      professor.escolaEscolhida || ""
-    ).trim();
-
-    const removido =
-      situacao === "FINALIZADO_REMOCAO" ||
-      situacao === "CONFIRMADO";
-
-    return {
-      ok: true,
-      inscrito: true,
-      finalizado: finalizado,
-      removido: removido,
-
-      candidato: {
-        codigo: Number(professor.codigo),
-        nome: professor.nome,
-        lotacaoOriginal: lotacaoOriginal,
-        lotacaoAtual: lotacaoAtual,
-        escolaEscolhida: escolaEscolhida,
-        etapa: Number(professor.etapa),
-        situacao: situacao,
-        tipoDecisao: professor.tipoDecisao || ""
-      },
-
-      processoAtivo: config.ativo,
-      etapaAtiva: config.etapa,
-
-vagas: (
-  finalizado ||
-  !config.ativo ||
-  Number(professor.etapa) !== Number(config.etapa)
-)
-  ? []
-  : rpFVagasDisponiveis_(lotacaoAtual),
-
-
-      mensagem: removido
-        ? "Sua remoção foi concluída com sucesso."
-        : finalizado
-          ? "Sua participação na remoção foi encerrada."
-          : escolaEscolhida
-            ? "Sua preferência está registrada. Aguarde o processamento pela ordem de classificação."
-            : "Inscrição localizada. Selecione a instituição desejada."
-    };
-
-  } catch (erro) {
-    console.error(
-      "Erro na consulta inicial:",
-      erro
-    );
-
-    return {
-      ok: false,
-      motivo: "ERRO_CONSULTA",
-      mensagem: String(
-        erro.message || erro
-      )
-    };
-  }
-}
-
-function ativarHomologacaoRemocao() {
-  rpFPlanilha_();
-
-  rpFProps_().setProperty(
-    "RP_HOMOLOGACAO_SEM_CODIGO",
-    "SIM"
-  );
-
-  Logger.log(
-    "Homologação sem código ativada na cópia."
-  );
-}
-
-function encerrarHomologacaoRemocao() {
-  rpFProps_().deleteProperty(
-    "RP_HOMOLOGACAO_SEM_CODIGO"
-  );
-
-  Logger.log(
-    "Homologação sem código encerrada."
-  );
-}
-
+  })();
+</script>
+</body>
+</html>
