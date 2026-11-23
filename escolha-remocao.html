@@ -1,917 +1,1093 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Escolha de Vagas – Professores | Rede Municipal de Contenda</title>
-  <style>
-    :root{
-      --bg:#f5f7fb; --card:#fff; --text:#111827; --muted:#6b7280; --border:#e5e7eb;
-      --primary:#0b4aa2; --primary2:#0a2a5a; --danger:#b91c1c; --ok:#047857; --warn:#a16207;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--text)}
-    header{background:linear-gradient(90deg,var(--primary2),var(--primary));color:#fff;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.15)}
-    .topbar{max-width:1100px;margin:0 auto;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-    .brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-    .logos{display:flex;gap:10px;align-items:center}
-    .logo{height:44px;width:auto;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:6px 8px}
-    .titles h1{margin:0;font-size:16px;line-height:1.2}
-    .titles p{margin:4px 0 0 0;font-size:12px;opacity:.95}
-    .stepper{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
-    .pill{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);user-select:none}
-    main{max-width:1100px;margin:0 auto;padding:16px;display:grid;gap:12px}
-    @media (min-width: 920px){ main{grid-template-columns:1.25fr .75fr;} }
-    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-    .h2{margin:0 0 8px 0;font-size:16px}
-    .muted{color:var(--muted);font-size:12px}
-    .small{font-size:12px}
-    .grid{display:grid;gap:10px}
-    @media (min-width: 700px){ .grid.two{grid-template-columns:1fr 1fr;} }
-    label{display:block;font-weight:800;font-size:13px;margin-bottom:6px}
-    input,select,button{width:100%;padding:10px 10px;border-radius:12px;border:1px solid var(--border);background:#fff;font-size:14px;outline:none}
-    input:focus,select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(147,197,253,.45)}
-    .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-    .btn{cursor:pointer;border:none;border-radius:12px;padding:10px 12px;font-weight:900;font-size:14px}
-    .btn.primary{background:var(--primary);color:#fff}
-    .btn.secondary{background:#1118270f;color:var(--text);border:1px solid var(--border)}
-    .btn:disabled{opacity:.55;cursor:not-allowed}
-    .divider{height:1px;background:var(--border);margin:12px 0}
-    .choice{border:1px dashed var(--border);border-radius:14px;padding:10px;background:#fafafa}
-    .badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:900;border:1px solid var(--border);background:#fff;margin-right:6px}
-    .status-ok{color:var(--ok)}
-    .status-warn{color:var(--warn)}
-    .status-bad{color:var(--danger)}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    th,td{padding:8px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
-    th{color:#374151;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
-    .hidden{display:none !important;}
-    footer{max-width:1100px;margin:0 auto;padding:0 16px 16px}
-    .foot{background:#fff;border:1px solid var(--border);border-radius:16px;padding:12px 14px;color:#374151;font-size:12px;line-height:1.35}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-    /* Impressão do comprovante */
-    #printArea{display:none;}
-    @media print{
-      body *{visibility:hidden;}
-      #printArea, #printArea *{visibility:visible;}
-      #printArea{
-        display:block;
-        position:fixed; left:0; top:0; right:0; bottom:0;
-        background:#fff; padding:18px;
-      }
-      .no-print{display:none !important;}
-    }
-    .receipt{
-      max-width:820px; margin:0 auto;
-      border:1px solid #ddd; border-radius:12px; padding:14px;
-    }
-    .receipt h2{margin:0 0 6px 0; font-size:16px}
-    .receipt .row{display:flex; gap:12px; flex-wrap:wrap}
-    .receipt .box{
-      flex:1 1 220px;
-      border:1px solid #eee; border-radius:10px; padding:10px;
-    }
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-    .sigwrap{
-      display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap;
-      margin-top:10px;
-    }
-    .sig{
-      border-top:1px solid #bbb;
-      padding-top:6px;
-      min-width:320px;
-    }
-    .sig img{
-      max-height:64px;
-      width:auto;
-      display:block;
-      margin:0 0 6px 0;
-    }
-    .obs{
-      background:#fff7ed;
-      border:1px solid #fed7aa;
-      border-radius:10px;
-      padding:10px;
-      margin-top:10px;
-      color:#7c2d12;
-      font-size:12px;
-      line-height:1.35;
-    }
-  </style>
+<title>Escolha de Remoção | Contenda</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f1f5f9;
+  color: #243247;
+  font-family: Arial, sans-serif;
+}
+
+header {
+  background: #173b65;
+  color: white;
+  text-align: center;
+  padding: 28px 15px;
+}
+
+header h1 {
+  margin: 0 0 10px;
+  font-size: 26px;
+}
+
+header p {
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+.logos {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 750px;
+  margin: 0 auto 15px;
+}
+
+.logos img {
+  max-width: 115px;
+  max-height: 85px;
+  object-fit: contain;
+}
+
+main {
+  max-width: 800px;
+  margin: 30px auto;
+  padding: 0 15px;
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: 0 4px 16px #00000012;
+}
+
+h2 {
+  color: #173b65;
+  margin-top: 0;
+}
+
+label {
+  display: block;
+  margin: 15px 0 8px;
+  font-weight: bold;
+}
+
+input[type="text"],
+select {
+  width: 100%;
+  padding: 13px;
+  font-size: 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 13px 18px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.primary {
+  background: #173b65;
+  color: white;
+}
+
+.success {
+  background: #167347;
+  color: white;
+}
+
+.secondary {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.actions button {
+  flex: 1 1 160px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.notice {
+  padding: 15px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e40af;
+  margin: 16px 0;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.notice.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.notice.ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.field {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.field small {
+  display: block;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.choice {
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  padding: 16px;
+  margin: 15px 0;
+}
+
+.choice label {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.choice input {
+  width: auto;
+}
+
+.choice p {
+  margin: 10px 0 0 25px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.receipt {
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  padding: 20px;
+  line-height: 1.7;
+}
+
+footer {
+  text-align: center;
+  color: #64748b;
+  padding: 25px;
+  font-size: 12px;
+}
+
+@media(max-width:600px) {
+  .info {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  .logos img {
+    max-width: 75px;
+  }
+}
+
+@media print {
+  header,
+  footer,
+  .actions,
+  .no-print,
+  .notice {
+    display: none !important;
+  }
+
+  main {
+    margin: 0;
+    padding: 0;
+  }
+
+  .card {
+    box-shadow: none;
+  }
+}
+</style>
 </head>
 
 <body>
-<header>
-  <div class="topbar">
-    <div class="brand">
-      <div class="logos">
-        <img class="logo" src="logo-prefeitura.png" alt="Prefeitura Municipal de Contenda" onerror="this.style.display='none'">
-        <img class="logo" src="logo-secretaria.png" alt="Secretaria Municipal de Educação" onerror="this.style.display='none'">
-      </div>
-      <div class="titles">
-        <h1>Seleção de Vagas – Professores | Rede Municipal de Ensino de Contenda</h1>
-        <p>
-          Preencha a identificação e selecione até 3 opções. <b>1 vaga por turma</b>. Prioridade por <b>data de admissão</b>.
-        </p>
-      </div>
-    </div>
 
-    <div class="stepper">
-      <span class="pill" id="pillStep1">1) Identificação</span>
-      <span class="pill" id="pillStep2">2) Escolhas</span>
-      <span class="pill" id="pillStep3">3) Resultado</span>
-    </div>
+<header>
+  <div class="logos">
+    <img src="logo-prefeitura.png"
+         alt="Prefeitura de Contenda">
+
+    <img src="logo-secretaria.png"
+         alt="Secretaria de Educação">
   </div>
+
+  <h1>Concurso de Remoção</h1>
+  <p>Escolha de vaga e acompanhamento</p>
+  <p>
+    Secretaria Municipal de Educação,
+    Cultura, Esporte e Turismo
+  </p>
+  <p>Contenda – Paraná</p>
 </header>
 
 <main>
-  <section class="grid" style="gap:12px;">
-    <div class="card" id="step1">
-      <h2 class="h2">1) Identificação do(a) Professor(a)</h2>
-      <p class="muted" style="margin:0 0 10px 0;">Preencha antes de abrir as opções.</p>
 
-      <div class="grid two">
-        <div>
-          <label for="nome">Nome completo</label>
-          <input id="nome" type="text" placeholder="Digite o nome completo" autocomplete="name" />
-        </div>
-        <div>
-          <label for="cpf">CPF</label>
-          <input id="cpf" type="text" placeholder="000.000.000-00" inputmode="numeric" />
-          <div class="muted">O CPF é usado para localizar/atualizar sua inscrição.</div>
-        </div>
-      </div>
+<section class="card" id="screenCpf">
+  <h2>Identificação do professor</h2>
 
-      <div class="grid two" style="margin-top:10px;">
-        <div>
-          <label for="admissao">Data de admissão</label>
-          <input id="admissao" type="date" />
-          <div class="muted">Prioridade: data mais antiga → maior prioridade.</div>
-        </div>
-        <div class="actions" style="align-items:end;">
-          <button class="btn primary" id="btnContinuar" type="button">Continuar</button>
-        </div>
-      </div>
+  <p>
+    Informe o CPF utilizado na inscrição
+    para consultar sua situação.
+  </p>
 
-      <div id="msgStep1" class="muted" style="margin-top:10px;"></div>
+  <form id="formCpf">
+    <label for="cpf">CPF</label>
+
+    <input
+      id="cpf"
+      type="text"
+      inputmode="numeric"
+      maxlength="14"
+      placeholder="000.000.000-00"
+      required
+    >
+
+    <div id="cpfMsg"
+         class="notice error hidden"></div>
+
+    <div class="actions">
+      <button type="submit"
+              class="primary"
+              id="btnCpf">
+        Consultar inscrição
+      </button>
+    </div>
+  </form>
+</section>
+
+<section class="card hidden" id="screenDecision">
+
+  <h2>Escolha da remoção</h2>
+
+  <div class="info">
+    <div class="field">
+      <small>Classificação</small>
+      <strong id="viewCode">–</strong>
     </div>
 
-    <div class="card hidden" id="step2">
-      <h2 class="h2">2) Escolhas (até 3)</h2>
-      <p class="muted" style="margin:0 0 10px 0;">
-        Selecione até 3 preferências (Escola + Turma). Pode enviar com 1 ou 2 opções.
+    <div class="field">
+      <small>Nome completo</small>
+      <strong id="viewName">–</strong>
+    </div>
+
+    <div class="field">
+      <small>Lotação atual</small>
+      <strong id="viewSchool">–</strong>
+    </div>
+
+    <div class="field">
+      <small>Etapa</small>
+      <strong id="viewStage">–</strong>
+    </div>
+  </div>
+
+  <div id="stateMsg" class="notice"></div>
+
+  <div id="choicePanel" class="hidden">
+
+    <div class="choice">
+      <label>
+        <input
+          type="radio"
+          name="decision"
+          value="PREFERENCIA"
+        >
+        Escolher uma vaga
+      </label>
+
+      <p>
+        Selecione uma instituição com vaga
+        disponível.
       </p>
 
-      <div id="choicesWrap" class="grid" style="gap:10px;"></div>
-
-      <div class="actions" style="margin-top:10px; justify-content:space-between;">
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn secondary" id="btnAddChoice" type="button">+ Adicionar escolha</button>
-          <button class="btn secondary" id="btnVoltar" type="button">Voltar</button>
-        </div>
-        <button class="btn primary" id="btnEnviar" type="button">Enviar escolhas</button>
-      </div>
-
-      <div id="msgStep2" class="muted" style="margin-top:10px;"></div>
+      <select id="school" disabled>
+        <option value="">
+          Selecione uma instituição
+        </option>
+      </select>
     </div>
 
-    <div class="card hidden" id="step3">
-      <h2 class="h2">3) Resultado</h2>
-      <div id="resultBox" class="choice"></div>
+    <div class="choice">
+      <label>
+        <input
+          type="radio"
+          name="decision"
+          value="MANTER"
+        >
+        Manter minha lotação atual
+      </label>
 
-      <div class="divider"></div>
-
-      <div class="actions no-print" style="justify-content:space-between;">
-        <button class="btn secondary" id="btnNovaConsulta" type="button">Nova consulta</button>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn secondary" id="btnRecarregar" type="button">Atualizar painel</button>
-          <button class="btn primary" id="btnImprimir" type="button">Gerar comprovante (imprimir)</button>
-        </div>
-      </div>
-
-      <div id="msgStep3" class="muted" style="margin-top:10px;"></div>
+      <p>
+        Encerra sua participação no concurso,
+        sem alterar a lotação.
+      </p>
     </div>
-  </section>
 
-  <aside class="card">
-    <h2 class="h2">Painel de Vagas</h2>
-    <p class="muted" style="margin:0 0 10px 0;">
-      Vagas por escola/turma considerando as inscrições da planilha. <b>1 vaga por turma</b>.
+    <div class="choice" id="nextChoice">
+      <label>
+        <input
+          type="radio"
+          name="decision"
+          value="PROXIMA_ETAPA"
+        >
+        Ir para a próxima etapa
+      </label>
+
+      <p>
+        Mantém sua lotação atual e permite
+        participar da etapa seguinte.
+      </p>
+    </div>
+
+    <div class="actions">
+      <button
+        type="button"
+        class="success"
+        id="btnConfirm">
+        Confirmar decisão
+      </button>
+    </div>
+  </div>
+
+  <div id="decisionMsg"
+       class="notice error hidden"></div>
+
+  <div class="actions">
+    <button
+      type="button"
+      class="secondary"
+      id="btnRefresh">
+      Atualizar situação
+    </button>
+
+    <button
+      type="button"
+      class="secondary"
+      id="btnExit">
+      Finalizar acesso
+    </button>
+  </div>
+</section>
+
+<section class="card hidden" id="screenReceipt">
+
+  <h2>Decisão registrada</h2>
+
+  <div class="notice ok">
+    Sua decisão foi registrada com sucesso.
+  </div>
+
+  <div class="receipt" id="receipt">
+    <h3>COMPROVANTE DE DECISÃO</h3>
+
+    <p>
+      Concurso de Remoção –
+      Município de Contenda/PR
     </p>
-    <div id="vagasTableWrap"></div>
-    <div class="divider"></div>
-    <div class="muted small">
-      <b>Regra:</b> ordena por data de admissão (mais antiga primeiro). Para cada professor(a):
-      tenta 1ª opção; se cheia, tenta 2ª; se cheia, tenta 3ª.
-    </div>
-    <div class="divider"></div>
-    <div class="muted small" id="syncStatus"></div>
-  </aside>
+
+    <div id="receiptDetails"></div>
+  </div>
+
+  <div class="actions no-print">
+    <button
+      type="button"
+      class="primary"
+      id="btnPrint">
+      Imprimir comprovante
+    </button>
+
+    <button
+      type="button"
+      class="secondary"
+      id="btnFinish">
+      Finalizar
+    </button>
+  </div>
+</section>
+
 </main>
 
 <footer>
-  <div class="foot">
-    <b>Prefeitura Municipal de Contenda – Secretaria Municipal de Educação, Cultura, Esporte e Turismo</b><br/>
-    Seleção de vagas para <b>professores</b> – 1 vaga por turma – prioridade por data de admissão.
-  </div>
+  Prefeitura Municipal de Contenda
+  <p>Concurso de Remoção Progressiva – 2026</p>
 </footer>
 
-<!-- Área de impressão (comprovante) -->
-<div id="printArea">
-  <div class="receipt">
-    <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
-      <div>
-        <h2>Comprovante de Inscrição – Seleção de Vagas (Professores)</h2>
-        <div class="muted">Rede Municipal de Ensino de Contenda</div>
-      </div>
-      <div class="box" style="max-width:280px;">
-        <div class="muted">Protocolo</div>
-        <div class="mono" style="font-weight:900; font-size:14px;" id="rcptProtocolo"></div>
-        <div class="muted" style="margin-top:6px;">Data/Hora</div>
-        <div class="mono" id="rcptDataHora"></div>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="row">
-      <div class="box">
-        <div class="muted">Nome completo</div>
-        <div style="font-weight:900;" id="rcptNome"></div>
-      </div>
-      <div class="box">
-        <div class="muted">CPF</div>
-        <div class="mono" id="rcptCpf"></div>
-      </div>
-      <div class="box">
-        <div class="muted">Data de admissão</div>
-        <div class="mono" id="rcptAdmissao"></div>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="box">
-      <div class="muted">Opções informadas</div>
-      <div id="rcptOpcoes" style="margin-top:6px;"></div>
-    </div>
-
-    <div id="rcptObsSRM" class="obs" style="display:none;"></div>
-
-    <div class="divider"></div>
-
-    <div class="box">
-      <div class="muted">Resultado (conforme prioridade por data de admissão)</div>
-      <div style="margin-top:6px; font-weight:900;" id="rcptResultado"></div>
-      <div class="muted" style="margin-top:6px;" id="rcptMotivo"></div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="sigwrap">
-      <div class="sig">
-        <!-- Insira a imagem da assinatura digital com este nome na mesma pasta do HTML -->
-        <img src="assinatura-digital.png" alt="Assinatura Digital" onerror="this.style.display='none'">
-        <div style="font-weight:900;">Secretaria Municipal de Educação, Cultura, Esporte e Turismo</div>
-        <div class="muted small">Assinatura digital (conforme documento institucional)</div>
-      </div>
-      <div class="muted small" style="max-width:360px;">
-        Este comprovante registra a inscrição realizada no sistema. A alocação depende das vagas disponíveis (1 vaga por turma)
-        e da prioridade por data de admissão.
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
-  /**********************
-   * COLE SUA API URL *
-   **********************/
-  const API_URL = "https://script.google.com/macros/s/AKfycbwj9NAYRPz8Gu8dOU7yhVXaAYpSJG4qYmB6uuUWYWm5pxe5Sx1ot30-OuJInW_323Xx/exec";
+"use strict";
 
-  /**************************
-   * VAGAS: 1 POR TURMA
-   **************************/
-  const DEFAULT_VAGAS_POR_TURMA = 1;
+/*
+  ENDEREÇO DO APPS SCRIPT DE HOMOLOGAÇÃO
+*/
 
-  /**********************
-   * CATÁLOGO COMPLETO
-   **********************/
-  const CATALOGO = [
-    {
-      escolaId: "PAULINA-URBANIK-STABACH",
-      escolaNome: "ESCOLA MUNICIPAL DO CAMPO PROFESSORA PAULINA URBANIK STABACH",
-      turmas: [
-        { turmaId: "M-INFANTIL-V", turmaNome: "Manhã – Infantil V", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-2-ANO", turmaNome: "Manhã – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-3-ANO", turmaNome: "Manhã – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-4-ANO-A", turmaNome: "Manhã – 4º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-4-ANO-B", turmaNome: "Manhã – 4º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-INFANTIL-IV", turmaNome: "Tarde – Infantil IV", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-SRM", turmaNome: "Tarde – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
-      ],
-    },
-    {
-      escolaId: "JOAO-FRANCO",
-      escolaNome: "Escola Municipal João Franco",
-      turmas: [
-        { turmaId: "M-3-ANO", turmaNome: "Manhã – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-4-ANO", turmaNome: "Manhã – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-2-ANO-A", turmaNome: "Tarde – 2º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-2-ANO-B", turmaNome: "Tarde – 2º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
-      ],
-    },
-    {
-      escolaId: "ANTONIO-BORKOVSKI",
-      escolaNome: "Escola Municipal Vereador Antônio Borkovski",
-      turmas: [
-        { turmaId: "M-INFANTIL-IV", turmaNome: "Manhã – Infantil IV", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-INFANTIL-V", turmaNome: "Manhã – Infantil V", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-1-ANO", turmaNome: "Manhã – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-2-ANO", turmaNome: "Manhã – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-3-ANO-A", turmaNome: "Manhã – 3º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-3-ANO-B", turmaNome: "Manhã – 3º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-4-ANO", turmaNome: "Manhã – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-SRM", turmaNome: "Manhã – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
+const API_URL =
+"https://script.google.com/macros/s/AKfycbxkzNX9GE6MOsRmzjIBVrDvGKQC1HF4VAeJzl9-XTG64Iw_ChDvDNGwMeBpBuz8kC3E/exec";
 
-        { turmaId: "T-INFANTIL-IV", turmaNome: "Tarde – Infantil IV", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-INFANTIL-V", turmaNome: "Tarde – Infantil V", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-2-ANO", turmaNome: "Tarde – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-4-ANO", turmaNome: "Tarde – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-5-ANO", turmaNome: "Tarde – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-SRM", turmaNome: "Tarde – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
-      ],
-    },
-    {
-      escolaId: "RUI-BARBOSA",
-      escolaNome: "Escola Municipal do Campo Rui Barbosa",
-      turmas: [
-        { turmaId: "M-3-ANO", turmaNome: "Manhã – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-4-ANO", turmaNome: "Manhã – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-2-ANO", turmaNome: "Tarde – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-      ],
-    },
-    {
-      escolaId: "BOM-JESUS",
-      escolaNome: "Escola Municipal do Campo Bom Jesus",
-      turmas: [
-        { turmaId: "M-INFANTIL-IV-V", turmaNome: "Manhã – Infantil IV e V", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-1-ANO", turmaNome: "Manhã – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-2-ANO", turmaNome: "Manhã – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-3-ANO", turmaNome: "Manhã – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-4-ANO", turmaNome: "Manhã – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-      ],
-    },
-    {
-      escolaId: "IVO-BARBOSA",
-      escolaNome: "Escola Municipal Prefeito Ivo Barbosa",
-      turmas: [
-        { turmaId: "M-INFANTIL-IV", turmaNome: "Manhã – Infantil IV", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-INFANTIL-V", turmaNome: "Manhã – Infantil V", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-1-ANO", turmaNome: "Manhã – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-2-ANO", turmaNome: "Manhã – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-3-ANO", turmaNome: "Manhã – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-4-ANO", turmaNome: "Manhã – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-SRM", turmaNome: "Manhã – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
+const $ = id => document.getElementById(id);
 
-        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-2-ANO", turmaNome: "Tarde – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-3-ANO", turmaNome: "Tarde – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-4-ANO", turmaNome: "Tarde – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-5-ANO", turmaNome: "Tarde – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-SRM", turmaNome: "Tarde – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
-      ],
-    },
-    {
-      escolaId: "CIVICO-MILITAR-LEONOR",
-      escolaNome: "Escola Municipal Cívico Militar Leonor de Moura Carvalho",
-      turmas: [
-        { turmaId: "M-1-ANO", turmaNome: "Manhã – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-2-ANO-A", turmaNome: "Manhã – 2º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-2-ANO-B", turmaNome: "Manhã – 2º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-3-ANO", turmaNome: "Manhã – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-4-ANO", turmaNome: "Manhã – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-5-ANO-A", turmaNome: "Manhã – 5º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-5-ANO-B", turmaNome: "Manhã – 5º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-SRM", turmaNome: "Manhã – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
+let cpfAtual = "";
+let dadosAtuais = null;
+let ocupado = false;
 
-        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-2-ANO", turmaNome: "Tarde – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-3-ANO", turmaNome: "Tarde – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-4-ANO-A", turmaNome: "Tarde – 4º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-4-ANO-B", turmaNome: "Tarde – 4º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-5-ANO", turmaNome: "Tarde – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-SRM", turmaNome: "Tarde – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
-      ],
-    },
-    {
-      escolaId: "VANILDA-DIERZWA",
-      escolaNome: "Escola Municipal professora Vanilda Dierzwa",
-      turmas: [
-        { turmaId: "M-1-ANO", turmaNome: "Manhã – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-2-ANO", turmaNome: "Manhã – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-4-ANO-A", turmaNome: "Manhã – 4º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-4-ANO-B", turmaNome: "Manhã – 4º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-SRM", turmaNome: "Manhã – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
-
-        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-2-ANO", turmaNome: "Tarde – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-3-ANO-A", turmaNome: "Tarde – 3º ano A", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-3-ANO-B", turmaNome: "Tarde – 3º ano B", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-4-ANO", turmaNome: "Tarde – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-5-ANO", turmaNome: "Tarde – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-SRM", turmaNome: "Tarde – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
-      ],
-    },
-    {
-      escolaId: "NS-GRACAS",
-      escolaNome: "Escola Municipal do Campo Nossa Senhora das Graças",
-      turmas: [
-        { turmaId: "M-INFANTIL-IV", turmaNome: "Manhã – Infantil IV", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-INFANTIL-V", turmaNome: "Manhã – Infantil V", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-1-ANO", turmaNome: "Manhã – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-2-ANO", turmaNome: "Manhã – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-3-ANO", turmaNome: "Manhã – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-4-ANO", turmaNome: "Manhã – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-5-ANO", turmaNome: "Manhã – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "M-SRM", turmaNome: "Manhã – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
-
-        { turmaId: "T-INFANTIL-IV", turmaNome: "Tarde – Infantil IV", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-INFANTIL-V", turmaNome: "Tarde – Infantil V", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-1-ANO", turmaNome: "Tarde – 1º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-2-ANO", turmaNome: "Tarde – 2º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-3-ANO", turmaNome: "Tarde – 3º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-4-ANO", turmaNome: "Tarde – 4º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-5-ANO", turmaNome: "Tarde – 5º ano", vagas: DEFAULT_VAGAS_POR_TURMA },
-        { turmaId: "T-SRM", turmaNome: "Tarde – SRM", vagas: DEFAULT_VAGAS_POR_TURMA },
-      ],
-    },
-  ];
-
-  /*****************
-   * UTILITÁRIOS
-   *****************/
-  const $ = (id) => document.getElementById(id);
-  const onlyDigits = (str) => (str || "").replace(/\D/g, "");
-
-  function formatCPF(value){
-    const d = onlyDigits(value).slice(0, 11);
-    const p1 = d.slice(0,3), p2=d.slice(3,6), p3=d.slice(6,9), p4=d.slice(9,11);
-    let out = p1;
-    if (p2) out += "." + p2;
-    if (p3) out += "." + p3;
-    if (p4) out += "-" + p4;
-    return out;
-  }
-
-  function maskCPF(cpfDigits){
-    const d = onlyDigits(cpfDigits);
-    if (d.length !== 11) return cpfDigits;
-    return `${d.slice(0,3)}.***.***-${d.slice(9,11)}`;
-  }
-
-  function isValidCPF(cpf){
-    cpf = onlyDigits(cpf);
-    if (cpf.length !== 11) return false;
-    if (/^(\d)\1+$/.test(cpf)) return false;
-
-    const calc = (base, factor) => {
-      let total = 0;
-      for (let i=0; i<base.length; i++){
-        total += parseInt(base[i],10) * (factor - i);
-      }
-      const rest = (total * 10) % 11;
-      return (rest === 10) ? 0 : rest;
-    };
-
-    const d1 = calc(cpf.slice(0,9), 10);
-    const d2 = calc(cpf.slice(0,10), 11);
-    return d1 === parseInt(cpf[9],10) && d2 === parseInt(cpf[10],10);
-  }
-
-  function findEscola(escolaId){ return CATALOGO.find(e => e.escolaId === escolaId); }
-  function findTurma(escolaId, turmaId){
-    const esc = findEscola(escolaId);
-    return esc?.turmas?.find(t => t.turmaId === turmaId);
-  }
-  function labelOpcao(escolaId, turmaId){
-    const esc = findEscola(escolaId);
-    const tur = findTurma(escolaId, turmaId);
-    if (!esc || !tur) return "(opção inválida)";
-    return `${esc.escolaNome} — ${tur.turmaNome}`;
-  }
-
-  function cloneVagasBase(){
-    const map = {};
-    for (const e of CATALOGO){
-      for (const t of e.turmas){
-        map[`${e.escolaId}|${t.turmaId}`] = t.vagas; // 1 vaga por turma
-      }
-    }
-    return map;
-  }
-
-  function protocoloFrom(cpfDigits, admDate){
-    const last4 = onlyDigits(cpfDigits).slice(-4);
-    const stamp = Date.now().toString(36).toUpperCase();
-    const adm = String(admDate || "").replaceAll("-","");
-    return `CTD-${adm}-${last4}-${stamp}`;
-  }
-
-  function hasSRM(opcoes){
-    return (opcoes || []).some(o => String(o.turmaId || "").toUpperCase().includes("SRM"));
-  }
-
-  /*******************************
-   * ALOCAÇÃO POR DATA DE ADMISSÃO
-   *******************************/
-  function alocarTodos(inscricoes){
-    const ordenadas = [...inscricoes].sort((a,b)=>{
-      const da = new Date(a.dataAdmissao).getTime();
-      const db = new Date(b.dataAdmissao).getTime();
-      if (da !== db) return da - db;
-      const ta = new Date(a.timestamp || 0).getTime();
-      const tb = new Date(b.timestamp || 0).getTime();
-      return ta - tb;
-    });
-
-    const vagas = cloneVagasBase();
-    const resultado = {};
-
-    for (const ins of ordenadas){
-      const cpf = String(ins.cpf || "").replace(/\D/g,"");
-      let alocado = null;
-
-      for (const opc of (ins.opcoes || [])){
-        const key = `${opc.escolaId}|${opc.turmaId}`;
-        if ((vagas[key] ?? 0) > 0){
-          vagas[key] -= 1;
-          alocado = { escolaId: opc.escolaId, turmaId: opc.turmaId };
-          break;
-        }
-      }
-
-      resultado[cpf] = alocado ? {
-        status: "ALOCADO",
-        opcaoAlocada: alocado,
-        motivo: "Vaga confirmada conforme prioridade por data de admissão."
-      } : {
-        status: "LISTA_ESPERA",
-        opcaoAlocada: null,
-        motivo: "Sem vagas disponíveis nas opções informadas após aplicar a prioridade."
-      };
-    }
-
-    return { resultado, vagasRestantes: vagas };
-  }
-
-  /*****************
-   * API (Sheets)
-   *****************/
-  async function apiGetInscricoes(){
-    const res = await fetch(API_URL, { method:"GET" });
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || "Falha ao buscar inscrições");
-    return data.inscricoes || [];
-  }
-
-  async function apiSaveInscricao(payload){
-  const res = await fetch(API_URL, {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(payload)
+function tela(id) {
+  [
+    "screenCpf",
+    "screenDecision",
+    "screenReceipt"
+  ].forEach(nome => {
+    $(nome).classList.toggle(
+      "hidden",
+      nome !== id
+    );
   });
 
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.error || "Falha ao salvar inscrição");
-  return data;
+  window.scrollTo(0, 0);
 }
 
-  /*****************
-   * UI – VAGAS
-   *****************/
-  async function renderVagasTable(){
-    const inscricoes = await apiGetInscricoes();
-    const { vagasRestantes } = alocarTodos(inscricoes);
+function mensagem(id, texto, tipo = "error") {
+  const el = $(id);
+  el.textContent = texto;
+  el.className =
+    "notice " + tipo +
+    (texto ? "" : " hidden");
+}
 
-    let html = `<table>
-      <thead><tr><th>Escola</th><th>Turma</th><th>Vagas</th></tr></thead><tbody>`;
+function somenteNumeros(valor) {
+  return String(valor || "").replace(/\D/g, "");
+}
 
-    for (const e of CATALOGO){
-      for (const t of e.turmas){
-        const key = `${e.escolaId}|${t.turmaId}`;
-        const rest = vagasRestantes[key] ?? t.vagas;
-        html += `<tr>
-          <td>${e.escolaNome}</td>
-          <td>${t.turmaNome}</td>
-          <td><b>${rest}</b> / ${t.vagas}</td>
-        </tr>`;
-      }
+function formatarCpf(valor) {
+  const n = somenteNumeros(valor).slice(0, 11);
+
+  return n
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1-$2");
+}
+
+function cpfValido(valor) {
+  const n = somenteNumeros(valor);
+
+  if (!/^\d{11}$/.test(n)) return false;
+  if (/^(\d)\1{10}$/.test(n)) return false;
+
+  for (let t = 9; t < 11; t++) {
+    let soma = 0;
+
+    for (let i = 0; i < t; i++) {
+      soma += Number(n[i]) * (t + 1 - i);
     }
 
-    html += `</tbody></table>`;
-    $("vagasTableWrap").innerHTML = html;
-    $("syncStatus").textContent = `Última atualização: ${new Date().toLocaleString("pt-BR")}. Total de inscrições: ${inscricoes.length}.`;
+    let digito = (soma * 10) % 11;
+    if (digito === 10) digito = 0;
+
+    if (digito !== Number(n[t])) return false;
   }
 
-  /*****************
-   * UI – ESCOLHAS
-   *****************/
-  function updateButtonsState(){
-    const blocks = $("choicesWrap").querySelectorAll(".choice").length;
-    $("btnAddChoice").disabled = blocks >= 3;
-  }
-  function refreshChoiceBadges(){
-    const blocks = [...$("choicesWrap").querySelectorAll(".choice")];
-    blocks.forEach((b, i) => {
-      const badge = b.querySelector(".badge");
-      if (badge) badge.textContent = `${i+1}ª opção`;
-    });
-  }
+  return true;
+}
 
-  function createChoiceBlock(index){
-    const wrap = document.createElement("div");
-    wrap.className = "choice";
+function erroApi(dados) {
+  if (!dados) return "Resposta não identificada.";
 
-    wrap.innerHTML = `
-      <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
-        <div><span class="badge">${index+1}ª opção</span> <span class="muted">Selecione escola e turma</span></div>
-        <button class="btn secondary" type="button" style="width:auto; padding:8px 10px;" data-remove>Remover</button>
-      </div>
+  const motivo = String(
+    dados.motivo ||
+    dados.erro ||
+    dados.error ||
+    ""
+  );
 
-      <div class="grid two" style="margin-top:10px;">
-        <div>
-          <label>Escola</label>
-          <select data-escola>
-            <option value="">Selecione...</option>
-            ${CATALOGO.map(e => `<option value="${e.escolaId}">${e.escolaNome}</option>`).join("")}
-          </select>
-        </div>
-        <div>
-          <label>Turma</label>
-          <select data-turma disabled>
-            <option value="">Selecione a escola primeiro...</option>
-          </select>
-        </div>
-      </div>
-      <div class="muted small" style="margin-top:8px;" data-hint></div>
-    `;
+  const mensagens = {
+    NAO_INSCRITO:
+      "CPF não inscrito no Concurso de Remoção.",
 
-    const selEscola = wrap.querySelector("[data-escola]");
-    const selTurma = wrap.querySelector("[data-turma]");
-    const hint = wrap.querySelector("[data-hint]");
-    const btnRemove = wrap.querySelector("[data-remove]");
+    VAGA_INDISPONIVEL:
+      "A vaga não está mais disponível. Escolha outra instituição.",
 
-    selEscola.addEventListener("change", () => {
-      const escolaId = selEscola.value;
-      selTurma.innerHTML = "";
+    PREFERENCIA_JA_REGISTRADA:
+      "Sua preferência já foi registrada.",
 
-      if (!escolaId){
-        selTurma.disabled = true;
-        selTurma.innerHTML = `<option value="">Selecione a escola primeiro...</option>`;
-        hint.textContent = "";
-        return;
-      }
+    ETAPA_NAO_DISPONIVEL:
+      "Esta etapa ainda não está disponível.",
 
-      const esc = findEscola(escolaId);
-      selTurma.disabled = false;
-      selTurma.innerHTML =
-        `<option value="">Selecione...</option>` +
-        esc.turmas.map(t => `<option value="${t.turmaId}">${t.turmaNome}</option>`).join("");
+    JA_FINALIZADO:
+      "Sua participação já foi finalizada.",
 
-      hint.textContent = "Consulte o painel de vagas antes de confirmar.";
-    });
+    ACESSO_NAO_AUTORIZADO:
+      "Acesso não autorizado. Procure a Secretaria.",
 
-    btnRemove.addEventListener("click", () => {
-      wrap.remove();
-      refreshChoiceBadges();
-      updateButtonsState();
-    });
+    PROCESSAMENTO_OCUPADO:
+      "O sistema está ocupado. Tente novamente."
+  };
 
-    return wrap;
-  }
+  return mensagens[motivo] ||
+    dados.mensagem ||
+    motivo ||
+    "Não foi possível concluir a solicitação.";
+}
 
-  function addChoice(){
-    const blocks = $("choicesWrap").querySelectorAll(".choice").length;
-    if (blocks >= 3) return;
-    $("choicesWrap").appendChild(createChoiceBlock(blocks));
-    updateButtonsState();
-  }
+async function consultarApi(acao, cpf) {
+  const url = new URL(API_URL);
 
-  function readChoices(){
-    const blocks = [...$("choicesWrap").querySelectorAll(".choice")];
-    return blocks.map(b => {
-      const escolaId = b.querySelector("[data-escola]").value;
-      const turmaId = b.querySelector("[data-turma]").value;
-      return { escolaId, turmaId };
-    }).filter(o => o.escolaId && o.turmaId);
-  }
+  url.searchParams.set("page", "remocao");
+  url.searchParams.set("action", acao);
+  url.searchParams.set("cpf", cpf);
 
-  /*****************
-   * FLUXO DE ETAPAS
-   *****************/
-  function setActiveStep(step){
-    $("step1").classList.toggle("hidden", step !== 1);
-    $("step2").classList.toggle("hidden", step !== 2);
-    $("step3").classList.toggle("hidden", step !== 3);
-
-    $("pillStep1").style.opacity = step === 1 ? "1" : ".75";
-    $("pillStep2").style.opacity = step === 2 ? "1" : ".75";
-    $("pillStep3").style.opacity = step === 3 ? "1" : ".75";
-  }
-
-  function showMsg(id, text, cls){
-    const el = $(id);
-    el.className = cls || "muted";
-    el.textContent = text || "";
-  }
-
-  /*****************
-   * EVENTOS
-   *****************/
-  $("cpf").addEventListener("input", (e)=>{ e.target.value = formatCPF(e.target.value); });
-
-  $("btnContinuar").addEventListener("click", ()=>{
-    const nome = ($("nome").value || "").trim();
-    const cpf = $("cpf").value;
-    const adm = $("admissao").value;
-
-    if (!nome){ showMsg("msgStep1","Informe o nome completo.","status-bad"); return; }
-    if (!isValidCPF(cpf)){ showMsg("msgStep1","CPF inválido. Verifique e tente novamente.","status-bad"); return; }
-    if (!adm){ showMsg("msgStep1","Informe a data de admissão.","status-bad"); return; }
-
-    showMsg("msgStep1","");
-    $("choicesWrap").innerHTML = "";
-    addChoice();
-    updateButtonsState();
-    setActiveStep(2);
+  const resposta = await fetch(url, {
+    cache: "no-store",
+    redirect: "follow"
   });
 
-  $("btnAddChoice").addEventListener("click", ()=> addChoice());
-  $("btnVoltar").addEventListener("click", ()=> setActiveStep(1));
-
-  let lastReceipt = null;
-
-  $("btnEnviar").addEventListener("click", async ()=>{
-    try{
-      if (!API_URL || API_URL.includes("COLE_AQUI")){
-        showMsg("msgStep2","Configure a API_URL (URL do Apps Script) no HTML.","status-bad");
-        return;
-      }
-
-      const nome = ($("nome").value || "").trim();
-      const cpfDigits = onlyDigits($("cpf").value);
-      const adm = $("admissao").value;
-      const opcoes = readChoices();
-
-      if (opcoes.length === 0){
-        showMsg("msgStep2","Selecione pelo menos 1 opção (Escola + Turma).","status-bad");
-        return;
-      }
-      const keys = opcoes.map(o => `${o.escolaId}|${o.turmaId}`);
-      if (new Set(keys).size !== keys.length){
-        showMsg("msgStep2","Você repetiu a mesma opção. Escolha opções diferentes.","status-bad");
-        return;
-      }
-
-      showMsg("msgStep2","Salvando inscrição...","muted");
-
-      await apiSaveInscricao({ nome, cpf: cpfDigits, dataAdmissao: adm, opcoes });
-
-      const inscricoes = await apiGetInscricoes();
-      const { resultado } = alocarTodos(inscricoes);
-      const res = resultado[cpfDigits];
-
-      lastReceipt = {
-        protocolo: protocoloFrom(cpfDigits, adm),
-        dataHora: new Date().toLocaleString("pt-BR"),
-        nome, cpfDigits, adm, opcoes,
-        res
-      };
-
-      renderResultadoAtual(lastReceipt);
-      await renderVagasTable();
-
-      showMsg("msgStep2","");
-      setActiveStep(3);
-      showMsg("msgStep3","Inscrição registrada na planilha e resultado calculado com base no banco.","muted");
-    }catch(err){
-      showMsg("msgStep2", `Erro: ${err.message || err}`, "status-bad");
-    }
-  });
-
-  function renderResultadoAtual(receipt){
-    const admBR = receipt.adm.split("-").reverse().join("/");
-    const opcoesTxt = receipt.opcoes.map((o,i)=> `${i+1}ª: ${labelOpcao(o.escolaId, o.turmaId)}`).join("<br/>");
-
-    let statusHtml = "";
-    if (receipt.res?.status === "ALOCADO"){
-      statusHtml = `<div class="status-ok" style="font-weight:900; margin:4px 0 8px 0;">
-        ✅ ALOCADO(A): ${labelOpcao(receipt.res.opcaoAlocada.escolaId, receipt.res.opcaoAlocada.turmaId)}
-      </div>`;
-    }else{
-      statusHtml = `<div class="status-warn" style="font-weight:900; margin:4px 0 8px 0;">
-        ⏳ LISTA DE ESPERA: sem vagas nas opções informadas
-      </div>`;
-    }
-
-    $("resultBox").innerHTML = `
-      <div class="muted small">Protocolo: <b class="mono">${receipt.protocolo}</b></div>
-      <div style="margin-top:6px;"><b>${receipt.nome}</b></div>
-      <div class="muted" style="margin-top:2px;">CPF: <b class="mono">${maskCPF(receipt.cpfDigits)}</b></div>
-      <div class="muted" style="margin-top:2px;">Data de admissão: <b class="mono">${admBR}</b></div>
-      <div class="divider"></div>
-      <div><b>Opções enviadas:</b><br/>${opcoesTxt}</div>
-      <div class="divider"></div>
-      ${statusHtml}
-      <div class="muted small">${receipt.res?.motivo || ""}</div>
-    `;
+  if (!resposta.ok) {
+    throw new Error(
+      "Falha na comunicação com o sistema."
+    );
   }
 
-  $("btnImprimir").addEventListener("click", ()=>{
-    if (!lastReceipt){
-      alert("Nenhuma inscrição recente para gerar comprovante.");
+  return await resposta.json();
+}
+
+async function enviarDecisao(decisao, escola) {
+  const id = "WEB_" +
+    Date.now() + "_" +
+    Math.random().toString(36).slice(2, 14);
+
+  const parametros = new URLSearchParams({
+    page: "remocao",
+    action: "decidir",
+    cpf: cpfAtual,
+    decisao: decisao,
+    escola: escola || "",
+    operacaoId: id
+  });
+
+  const resposta = await fetch(API_URL, {
+    method: "POST",
+    body: parametros,
+    redirect: "follow"
+  });
+
+  if (!resposta.ok) {
+    throw new Error(
+      "Falha na comunicação com o sistema."
+    );
+  }
+
+  return await resposta.json();
+}
+
+$("cpf").addEventListener("input", evento => {
+  evento.target.value =
+    formatarCpf(evento.target.value);
+});
+
+/*
+  CONSULTA PELO CPF
+*/
+
+$("formCpf").addEventListener(
+  "submit",
+  async evento => {
+    evento.preventDefault();
+
+    if (ocupado) return;
+
+    const cpf = somenteNumeros($("cpf").value);
+
+    if (!cpfValido(cpf)) {
+      mensagem(
+        "cpfMsg",
+        "CPF incorreto. Verifique o número informado."
+      );
       return;
     }
-    preencherComprovante(lastReceipt);
-    window.print();
+
+    ocupado = true;
+    $("btnCpf").disabled = true;
+    $("btnCpf").textContent = "Consultando...";
+    mensagem("cpfMsg", "");
+
+    try {
+      const verificacao = await consultarApi(
+        "verificar_inscricao",
+        cpf
+      );
+
+      if (!verificacao.ok ||
+          !verificacao.inscrito) {
+        mensagem(
+          "cpfMsg",
+          erroApi(verificacao)
+        );
+        return;
+      }
+
+      const dados = await consultarApi(
+        "escolha_inicial",
+        cpf
+      );
+
+      if (!dados.ok) {
+        mensagem("cpfMsg", erroApi(dados));
+        return;
+      }
+
+      cpfAtual = cpf;
+      mostrarSituacao(dados);
+      tela("screenDecision");
+
+    } catch (erro) {
+      console.error(erro);
+
+      mensagem(
+        "cpfMsg",
+        "Não foi possível consultar a inscrição. " +
+        "Verifique a conexão e tente novamente."
+      );
+
+    } finally {
+      ocupado = false;
+      $("btnCpf").disabled = false;
+      $("btnCpf").textContent =
+        "Consultar inscrição";
+    }
+  }
+);
+
+/*
+  EXIBIÇÃO DA SITUAÇÃO
+*/
+
+function mostrarSituacao(dados) {
+  dadosAtuais = dados;
+
+  const c = dados.candidato || {};
+
+  $("viewCode").textContent =
+    c.codigo ?? "–";
+
+  $("viewName").textContent =
+    c.nome || "–";
+
+  $("viewSchool").textContent =
+    c.lotacaoAtual || "–";
+
+  $("viewStage").textContent =
+    c.etapa ?? "–";
+
+  const status = String(
+    c.situacao || ""
+  ).trim().toUpperCase();
+
+  const etapaProfessor = Number(c.etapa);
+  const etapaAtiva = Number(dados.etapaAtiva);
+
+  const processoAtivo =
+    dados.processoAtivo === true ||
+    String(dados.processoAtivo).toUpperCase()
+      === "SIM";
+
+  const finalizado =
+    dados.finalizado === true ||
+    dados.removido === true ||
+    [
+      "FINALIZADO_REMOCAO",
+      "FINALIZADO_PERMANENCIA",
+      "CONFIRMADO",
+      "FINALIZADO",
+      "CANCELADO"
+    ].includes(status);
+
+  const preferencia =
+    c.escolaEscolhida ||
+    c.preferencia ||
+    "";
+
+  const temPreferencia =
+    status !== "NOVA_ESCOLHA" &&
+    (
+      status === "AGUARDANDO_VEZ" ||
+      status === "PENDENTE_PROCESSAMENTO" ||
+      (
+        String(c.tipoDecisao || "")
+          .toUpperCase() === "PREFERENCIA" &&
+        Boolean(preferencia)
+      )
+    );
+
+  const etapaLiberada =
+    etapaProfessor === etapaAtiva;
+
+  const podeEscolher =
+    processoAtivo &&
+    etapaLiberada &&
+    !finalizado &&
+    !temPreferencia;
+
+  $("choicePanel").classList.toggle(
+    "hidden",
+    !podeEscolher
+  );
+
+  $("btnConfirm").disabled = !podeEscolher;
+
+  $("nextChoice").classList.toggle(
+    "hidden",
+    etapaProfessor >= 3
+  );
+
+  const select = $("school");
+
+  select.replaceChildren(
+    new Option(
+      "Selecione uma instituição",
+      ""
+    )
+  );
+
+  (dados.vagas || []).forEach(vaga => {
+    const nome = vaga.escola || vaga.escolaId;
+    if (!nome) return;
+
+    select.add(
+      new Option(
+        nome + " — " +
+        vaga.quantidade + " vaga(s)",
+        vaga.escolaId || nome
+      )
+    );
   });
 
-  function preencherComprovante(receipt){
-    $("rcptProtocolo").textContent = receipt.protocolo;
-    $("rcptDataHora").textContent = receipt.dataHora;
-    $("rcptNome").textContent = receipt.nome;
-    $("rcptCpf").textContent = maskCPF(receipt.cpfDigits);
-    $("rcptAdmissao").textContent = receipt.adm.split("-").reverse().join("/");
+  document.querySelectorAll(
+    'input[name="decision"]'
+  ).forEach(radio => {
+    radio.checked = false;
+  });
 
-    $("rcptOpcoes").innerHTML = receipt.opcoes.map((o,i)=> {
-      return `<div><b>${i+1}ª opção:</b> ${labelOpcao(o.escolaId, o.turmaId)}</div>`;
-    }).join("");
+  select.disabled = true;
 
-    // OBS SRM
-    const obsEl = $("rcptObsSRM");
-    if (hasSRM(receipt.opcoes)){
-      obsEl.style.display = "block";
-      obsEl.innerHTML = `
-        <b>Observação – SRM:</b><br/>
-        O(a) professor(a) inscrito(a) na vaga de <b>SRM</b> deverá comparecer na
-        <b>Secretaria Municipal de Educação de Contenda</b> com <b>diploma</b> e <b>certificados</b>,
-        conforme <b>Edital de Vagas</b>.
-      `;
-    }else{
-      obsEl.style.display = "none";
-      obsEl.innerHTML = "";
+  let texto = "";
+
+  if (finalizado) {
+    if (
+      status === "FINALIZADO_REMOCAO" ||
+      status === "CONFIRMADO"
+    ) {
+      texto =
+        "REMOÇÃO CONFIRMADA\n\n" +
+        "Sua transferência foi concluída.\n\n" +
+        "Lotação atual: " +
+        (c.lotacaoAtual || "Não informada") +
+        "\n\nSua participação foi finalizada.";
+    } else {
+      texto =
+        "PARTICIPAÇÃO FINALIZADA\n\n" +
+        "Sua decisão foi registrada e " +
+        "sua participação foi encerrada.";
     }
 
-    if (receipt.res?.status === "ALOCADO"){
-      $("rcptResultado").textContent = `ALOCADO(A) em: ${labelOpcao(receipt.res.opcaoAlocada.escolaId, receipt.res.opcaoAlocada.turmaId)}`;
-    }else{
-      $("rcptResultado").textContent = "LISTA DE ESPERA (sem vaga nas opções informadas)";
-    }
-    $("rcptMotivo").textContent = receipt.res?.motivo || "";
+  } else if (!processoAtivo) {
+    texto =
+      "Aguarde a abertura do processo de remoção.";
+
+  } else if (etapaProfessor > etapaAtiva) {
+    texto =
+      "AGUARDANDO ABERTURA DA " +
+      etapaProfessor + "ª ETAPA\n\n" +
+      "Você optou por participar da próxima etapa.\n\n" +
+      "Sua lotação permanece inalterada.";
+
+  } else if (!etapaLiberada) {
+    texto =
+      "Esta etapa ainda não está disponível.";
+
+  } else if (status === "NOVA_ESCOLHA") {
+    texto =
+      "NOVA ESCOLHA NECESSÁRIA\n\n" +
+      "A instituição indicada anteriormente " +
+      "não possui mais vagas disponíveis.\n\n" +
+      "Sua lotação atual permanece inalterada.\n\n" +
+      "Selecione outra instituição disponível " +
+      "ou registre outra decisão.";
+
+  } else if (temPreferencia) {
+    texto =
+      "PREFERÊNCIA REGISTRADA\n\n" +
+      "Instituição escolhida: " +
+      (preferencia || "Não informada") +
+      "\n\nAguarde a confirmação da sua " +
+      "transferência conforme a ordem " +
+      "de classificação.";
+
+  } else {
+    texto =
+      "INSCRIÇÃO LOCALIZADA\n\n" +
+      "Selecione uma das decisões disponíveis.";
   }
 
-  $("btnNovaConsulta").addEventListener("click", ()=>{
-    showMsg("msgStep1","");
-    showMsg("msgStep2","");
-    showMsg("msgStep3","");
-    lastReceipt = null;
-    setActiveStep(1);
-  });
+  mensagem("stateMsg", texto, "info");
+  mensagem("decisionMsg", "");
+}
 
-  $("btnRecarregar").addEventListener("click", async ()=>{
-    try{
-      await renderVagasTable();
-      showMsg("msgStep3","Painel atualizado.","status-ok");
-    }catch(err){
-      showMsg("msgStep3", `Erro ao atualizar: ${err.message || err}`, "status-bad");
+/*
+  HABILITAR SELEÇÃO DE INSTITUIÇÃO
+*/
+
+document.querySelectorAll(
+  'input[name="decision"]'
+).forEach(radio => {
+  radio.addEventListener("change", () => {
+    $("school").disabled =
+      radio.value !== "PREFERENCIA" ||
+      !radio.checked;
+  });
+});
+
+/*
+  CONFIRMAÇÃO DA DECISÃO
+*/
+
+$("btnConfirm").addEventListener(
+  "click",
+  async () => {
+    if (ocupado || !dadosAtuais) return;
+
+    const selecionado = document.querySelector(
+      'input[name="decision"]:checked'
+    );
+
+    if (!selecionado) {
+      mensagem(
+        "decisionMsg",
+        "Selecione uma decisão."
+      );
+      return;
     }
-  });
 
-  // INIT
-  (async ()=>{
-    setActiveStep(1);
-    try{
-      if (API_URL && !API_URL.includes("COLE_AQUI")){
-        await renderVagasTable();
-      }else{
-        $("syncStatus").textContent = "Configure a API_URL no HTML para ativar o painel centralizado.";
+    const decisao = selecionado.value;
+
+    const escola =
+      decisao === "PREFERENCIA"
+        ? $("school").value
+        : "";
+
+    if (decisao === "PREFERENCIA" && !escola) {
+      mensagem(
+        "decisionMsg",
+        "Selecione uma instituição."
+      );
+      return;
+    }
+
+    const descricoes = {
+      PREFERENCIA:
+        "registrar sua preferência pela instituição " +
+        escola,
+
+      MANTER:
+        "manter sua lotação atual e encerrar " +
+        "sua participação",
+
+      PROXIMA_ETAPA:
+        "avançar para a próxima etapa " +
+        "mantendo sua lotação atual"
+    };
+
+    if (!confirm(
+      "Deseja " + descricoes[decisao] + "?"
+    )) {
+      return;
+    }
+
+    ocupado = true;
+    $("btnConfirm").disabled = true;
+    mensagem("decisionMsg", "");
+
+    try {
+      const resposta = await enviarDecisao(
+        decisao,
+        escola
+      );
+
+      if (!resposta.ok) {
+        mensagem(
+          "decisionMsg",
+          erroApi(resposta)
+        );
+        return;
       }
-    }catch(err){
-      $("syncStatus").textContent = "Não foi possível carregar o painel: " + (err.message || err);
+
+      const c = dadosAtuais.candidato || {};
+
+      const descricao =
+        decisao === "PREFERENCIA"
+          ? "Preferência de vaga registrada"
+          : decisao === "MANTER"
+            ? "Manter lotação atual"
+            : "Avançar para a próxima etapa";
+
+      const detalhes = [
+        ["Professor", c.nome],
+        ["Classificação", c.codigo],
+        ["Etapa", c.etapa],
+        ["Lotação atual", c.lotacaoAtual],
+        ["Decisão", descricao],
+        [
+          "Instituição escolhida",
+          decisao === "PREFERENCIA"
+            ? escola
+            : "Não se aplica"
+        ],
+        [
+          "Número da operação",
+          resposta.operacaoId || "Registrada"
+        ],
+        [
+          "Data",
+          new Date().toLocaleString("pt-BR")
+        ]
+      ];
+
+      const div = $("receiptDetails");
+      div.replaceChildren();
+
+      detalhes.forEach(([titulo, valor]) => {
+        const p = document.createElement("p");
+        const strong = document.createElement("strong");
+
+        strong.textContent = titulo + ": ";
+
+        p.append(
+          strong,
+          document.createTextNode(
+            String(valor ?? "–")
+          )
+        );
+
+        div.append(p);
+      });
+
+      tela("screenReceipt");
+
+    } catch (erro) {
+      console.error(erro);
+
+      mensagem(
+        "decisionMsg",
+        "Não foi possível confirmar o resultado. " +
+        "Consulte sua situação antes de tentar novamente."
+      );
+
+    } finally {
+      ocupado = false;
+      $("btnConfirm").disabled = false;
     }
-  })();
+  }
+);
+
+/*
+  ATUALIZAR SITUAÇÃO
+*/
+
+$("btnRefresh").addEventListener(
+  "click",
+  async () => {
+    if (ocupado || !cpfAtual) return;
+
+    ocupado = true;
+    $("btnRefresh").disabled = true;
+
+    try {
+      const dados = await consultarApi(
+        "escolha_inicial",
+        cpfAtual
+      );
+
+      if (!dados.ok) {
+        mensagem(
+          "decisionMsg",
+          erroApi(dados)
+        );
+        return;
+      }
+
+      mostrarSituacao(dados);
+
+    } catch (erro) {
+      mensagem(
+        "decisionMsg",
+        "Não foi possível atualizar a situação."
+      );
+
+    } finally {
+      ocupado = false;
+      $("btnRefresh").disabled = false;
+    }
+  }
+);
+
+/*
+  FINALIZAR ACESSO
+*/
+
+function finalizar() {
+  cpfAtual = "";
+  dadosAtuais = null;
+
+  $("cpf").value = "";
+
+  mensagem("cpfMsg", "");
+  mensagem("decisionMsg", "");
+
+  tela("screenCpf");
+}
+
+$("btnExit").onclick = finalizar;
+$("btnFinish").onclick = finalizar;
+
+$("btnPrint").onclick = () => {
+  window.print();
+};
 </script>
+
 </body>
 </html>
