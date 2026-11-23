@@ -1,1578 +1,1893 @@
 
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+/*********************************************************
+ SECRETARIA MUNICIPAL DE EDUCAÇÃO DE CONTENDA
+ CONCURSO DE REMOÇÃO PROGRESSIVA — 2026
 
-  <title>Escolha de Remoção | Contenda</title>
+ VERSÃO CONSOLIDADA PARA HOMOLOGAÇÃO
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+ Integração com Código.gs:
+ - rpIntegradoConsultar_(dados)
+ - rpIntegradoDecidir_(dados)
 
-    body {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f1f5f9;
-      color: #243247;
-    }
+ Estrutura:
+ - Classificação oficial
+ - Preferência antecipada
+ - Processamento automático da fila
+ - Nova escolha
+ - Transferência
+ - Permanência
+ - Avanço de etapa
+ - Controle de vagas
+ - Histórico
+ - Credenciais individuais
+ - Notificações
+ - Alerta administrativo de 60 minutos
+ - Recuperação supervisionada de falhas
 
-    header {
-      position: relative;
-      background: #173b65;
-      color: white;
-      text-align: center;
-      padding: 35px 165px;
-      min-height: 180px;
-    }
+ REGRAS FUNDAMENTAIS:
 
-    header h1 {
-      margin: 0 0 10px;
-      font-size: 26px;
-    }
+ TRANSFERÊNCIA:
+   Destino perde 1 vaga.
+   Origem recebe 1 vaga.
 
-    header p {
-      margin: 5px 0;
-      font-size: 14px;
-    }
+ PERMANÊNCIA:
+   Não altera vagas.
+   Encerra participação.
 
-    .logos {
-      position: absolute;
-      inset: 0 25px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      pointer-events: none;
-    }
+ AVANÇO:
+   Não altera vagas.
+   Mantém lotação atual.
+   Participa da etapa seguinte.
 
-    .logo {
-      height: 90px;
-      max-width: 125px;
-      object-fit: contain;
-      padding: 7px;
-      border-radius: 9px;
-      background: rgba(255,255,255,.08);
-    }
+ A preferência antecipada não reserva vaga.
 
-    main {
-      max-width: 800px;
-      margin: 30px auto;
-      padding: 0 16px;
-    }
+ IMPORTANTE:
+ Esta versão opera somente na cópia de testes.
+ Não habilitar gravações ou e-mails sem homologação.
+*********************************************************/
 
-    .card {
-      background: white;
-      border-radius: 13px;
-      padding: 30px;
-      box-shadow: 0 4px 16px rgba(0,0,0,.07);
-    }
 
-    h2 {
-      margin-top: 0;
-      color: #173b65;
-      font-size: 22px;
-    }
+/*********************************************************
+ 1. CONFIGURAÇÕES
+*********************************************************/
 
-    .descricao {
-      color: #64748b;
-      font-size: 14px;
-      line-height: 1.7;
-    }
+const RP_FINAL = {
 
-    label {
-      display: block;
-      font-weight: bold;
-      margin: 14px 0 8px;
-    }
+  GRAVACAO_ATIVA: true,
 
-    input, select {
-      width: 100%;
-      padding: 14px;
-      font-size: 16px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      background: white;
-    }
+  EMAIL_ATIVO: false,
 
-    button {
-      padding: 13px 18px;
-      border: none;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: bold;
-      cursor: pointer;
-    }
+  PROCESSAMENTO_AUTOMATICO: false,
 
-    button:disabled {
-      opacity: .55;
-      cursor: not-allowed;
-    }
+  ALERTA_MINUTOS: 60,
 
-    .primary {
-      background: #173b65;
-      color: white;
-    }
+  PREFIXO: "RPC26_",
 
-    .success {
-      background: #167347;
-      color: white;
-    }
+  STATUS: {
 
-    .muted {
-      background: #e2e8f0;
-      color: #334155;
-    }
+    PENDENTE: "PENDENTE",
 
-    .outline {
-      background: white;
-      border: 1px solid #173b65;
-      color: #173b65;
-    }
+    AGUARDANDO: "AGUARDANDO_VEZ",
 
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 22px;
-    }
+    NOVA_ESCOLHA: "NOVA_ESCOLHA",
 
-    .actions button {
-      flex: 1 1 170px;
-    }
+    AGUARDANDO_ETAPA: "AGUARDANDO_ETAPA",
 
-    .hidden {
-      display: none !important;
-    }
+    REMOVIDO: "FINALIZADO_REMOCAO",
 
-    .notice {
-      margin: 17px 0;
-      padding: 15px;
-      border-radius: 8px;
-      line-height: 1.55;
-      background: #eff6ff;
-      color: #1e40af;
-    }
+    PERMANENCIA: "FINALIZADO_PERMANENCIA"
 
-    .notice.error {
-      background: #fee2e2;
-      color: #991b1b;
-    }
+  }
 
-    .notice.ok {
-      background: #dcfce7;
-      color: #166534;
-    }
+};
 
-    .info {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin: 18px 0;
-    }
 
-    .field {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 12px;
-    }
+/*********************************************************
+ 2. FUNÇÕES AUXILIARES
+*********************************************************/
 
-    .field small {
-      display: block;
-      color: #64748b;
-      margin-bottom: 6px;
-    }
-
-    .choice {
-      margin: 16px 0;
-      padding: 16px;
-      border: 1px solid #cbd5e1;
-      border-radius: 9px;
-    }
-
-    .choice input {
-      width: auto;
-      margin-right: 10px;
-    }
-
-    .choice label {
-      margin: 0;
-      display: flex;
-      align-items: center;
-      cursor: pointer;
-    }
-
-    .choice p {
-      margin: 8px 0 0 27px;
-      color: #64748b;
-      font-size: 13px;
-    }
-
-    .receipt {
-      border: 1px solid #cbd5e1;
-      padding: 24px;
-      border-radius: 10px;
-      margin-top: 20px;
-      line-height: 1.75;
-    }
-
-    .receipt h3 {
-      text-align: center;
-      color: #173b65;
-    }
-
-    .stamp {
-      text-align: center;
-      font-size: 12px;
-      color: #64748b;
-    }
-
-    footer {
-      text-align: center;
-      padding: 25px;
-      color: #64748b;
-      font-size: 12px;
-    }
-
-    @media (max-width: 650px) {
-      header {
-        padding: 20px 12px;
-      }
-
-      .logos {
-        position: static;
-        justify-content: space-around;
-        margin-bottom: 12px;
-      }
-
-      .logo {
-        height: 65px;
-      }
-
-      .card {
-        padding: 22px;
-      }
-
-      .info {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media print {
-      body {
-        background: white;
-      }
-
-      header, footer, .actions,
-      .no-print, .notice {
-        display: none !important;
-      }
-
-      main {
-        max-width: none;
-        margin: 0;
-        padding: 0;
-      }
-
-      .card {
-        box-shadow: none;
-        padding: 0;
-      }
-
-      .receipt {
-        border: 1px solid #333;
-      }
-
-      .receipt h3 {
-        color: black;
-      }
-    }
-    
-#stateMsg {
-  white-space: pre-line;
+function rpFTexto_(valor) {
+  return normalizarTexto_(valor);
 }
 
-  </style>
-</head>
+function rpFCpf_(valor) {
 
-<body>
+  const d = String(
+    valor == null ? "" : valor
+  ).replace(/\D/g, "");
 
-<header>
-  <div class="logos">
-    <img
-      class="logo"
-      src="logo-prefeitura.png"
-      alt="Prefeitura Municipal de Contenda"
-    >
+  if (!d || d.length > 11) return "";
 
-    <img
-      class="logo"
-      src="logo-secretaria.png"
-      alt="Secretaria Municipal de Educação"
-    >
-  </div>
+  return d.padStart(11, "0");
+}
 
-  <h1>Concurso de Remoção</h1>
-  <p>Escolha de vaga e acompanhamento</p>
-  <p>
-    Secretaria Municipal de Educação,
-    Cultura, Esporte e Turismo
-  </p>
-  <p>Contenda – Paraná</p>
-</header>
+function rpFErro_(motivo, mensagem) {
 
-<main>
+  return {
+    ok: false,
+    motivo: motivo,
+    mensagem: mensagem || motivo
+  };
+}
 
-  <!-- TELA 1: CPF -->
-  <section class="card" id="screenCpf">
-    <h2>Identificação do professor</h2>
+function rpFId_() {
+  return "RPC-" + Utilities.getUuid();
+}
 
-    <p class="descricao">
-      Informe o CPF utilizado na inscrição
-      para continuar.
-    </p>
+function rpFProps_() {
+  return PropertiesService.getScriptProperties();
+}
 
-    <form id="formCpf">
-      <label for="cpf">CPF</label>
+function rpFChave_(tipo, valor) {
 
-      <input
-        id="cpf"
-        inputmode="numeric"
-        autocomplete="off"
-        maxlength="14"
-        placeholder="000.000.000-00"
-        required
-      >
+  return RP_FINAL.PREFIXO +
+    tipo + "_" + String(valor);
+}
 
-      <div
-        id="cpfMsg"
-        class="notice error hidden"
-        role="alert"
-      ></div>
+function rpFHash_(valor) {
 
-      <div class="actions">
-        <button class="primary" type="submit">
-          Continuar
-        </button>
-      </div>
-    </form>
-  </section>
+  const bytes = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    String(valor),
+    Utilities.Charset.UTF_8
+  );
 
-  <!-- TELA 2: CREDENCIAL -->
-  <section class="card hidden" id="screenAccess">
-    <h2>Confirmação de acesso</h2>
+  return Utilities.base64EncodeWebSafe(bytes);
+}
 
-    <p class="descricao">
-      Para proteger suas informações,
-      informe a credencial individual
-      fornecida pela Secretaria.
-    </p>
+function rpFPlanilha_() {
 
-    <form id="formAccess">
-      <label for="token">
-        Credencial de acesso
-      </label>
+  const ss = planilha_();
 
-      <input
-        id="token"
-        type="password"
-        autocomplete="off"
-        required
-        placeholder="Digite sua credencial"
-      >
+  if (
+    REMOCAO_AMBIENTE_TESTE !== true ||
+    ss.getId() !== REMOCAO_ID_PLANILHA_TESTE ||
+    ss.getId() === REMOCAO_ID_PLANILHA_ORIGINAL
+  ) {
+    throw new Error(
+      "PLANILHA_NAO_AUTORIZADA"
+    );
+  }
 
-      <div
-        id="accessMsg"
-        class="notice error hidden"
-        role="alert"
-      ></div>
+  return ss;
+}
 
-      <div class="actions">
-        <button
-          type="button"
-          class="muted"
-          id="backCpf"
-        >
-          Voltar
-        </button>
+function rpFLock_(fn) {
 
-        <button
-          type="submit"
-          class="primary"
-          id="btnAccess"
-        >
-          Consultar inscrição
-        </button>
-      </div>
-    </form>
-  </section>
+  const lock = LockService.getScriptLock();
 
-  <!-- TELA 3: ESCOLHA -->
-  <section
-    class="card hidden"
-    id="screenDecision"
-  >
-    <h2>Escolha da remoção</h2>
+  if (!lock.tryLock(30000)) {
+    throw new Error(
+      "PROCESSAMENTO_OCUPADO"
+    );
+  }
 
-    <div class="info">
-      <div class="field">
-        <small>Classificação</small>
-        <strong id="viewCode">–</strong>
-      </div>
+  try {
+    return fn();
+  } finally {
+    lock.releaseLock();
+  }
+}
 
-      <div class="field">
-        <small>Nome completo</small>
-        <strong id="viewName">–</strong>
-      </div>
+function rpFConfig_() {
 
-      <div class="field">
-        <small>Lotação atual</small>
-        <strong id="viewSchool">–</strong>
-      </div>
+  const c = lerConfig_();
 
-      <div class="field">
-        <small>Etapa</small>
-        <strong id="viewStage">–</strong>
-      </div>
-    </div>
+  return {
+    etapa: Number(c.ETAPA_ATIVA || 0),
+    ativo: rpFTexto_(
+      c.PROCESSO_ATIVO
+    ) === "SIM"
+  };
+}
 
-    <div id="stateMsg" class="notice"></div>
+function rpFExigirEscrita_() {
 
-    <div id="choicePanel" class="hidden">
+  rpFPlanilha_();
 
-      <div class="choice">
-        <label>
-          <input
-            type="radio"
-            name="decision"
-            value="ESCOLHER_VAGA"
-          >
-          Escolher uma vaga
-        </label>
+  if (RP_FINAL.GRAVACAO_ATIVA !== true) {
+    throw new Error(
+      "GRAVACAO_DESATIVADA"
+    );
+  }
 
-        <p>
-          Selecione uma das instituições
-          com vagas disponíveis.
-        </p>
+  rpFExigirSemFalhas_();
+}
 
-        <select
-          id="school"
-          aria-label="Instituição de destino"
-          disabled
-        >
-          <option value="">
-            Selecione uma instituição
-          </option>
-        </select>
-      </div>
 
-      <div class="choice">
-        <label>
-          <input
-            type="radio"
-            name="decision"
-            value="MANTER"
-          >
-          Manter minha lotação atual
-        </label>
+/*********************************************************
+ 3. PARTICIPANTES
+*********************************************************/
 
-        <p>
-          Encerra a participação sem
-          liberar a vaga da instituição.
-        </p>
-      </div>
+function rpFParticipantes_() {
 
-      <div class="choice" id="nextChoice">
-        <label>
-          <input
-            type="radio"
-            name="decision"
-            value="PROXIMA_ETAPA"
-          >
-          Ir para a próxima etapa
-        </label>
+  const lista = todosParticipantes_();
 
-        <p>
-          Você permanece na lotação atual
-          até a próxima etapa.
-          Nenhuma vaga é liberada.
-        </p>
-      </div>
+  const codigos = new Set();
+  const cpfs = new Set();
 
-      <div class="actions">
-        <button
-          type="button"
-          class="success"
-          id="btnConfirm"
-        >
-          Confirmar decisão
-        </button>
-      </div>
-    </div>
+  lista.forEach(p => {
 
-    <div
-      id="decisionMsg"
-      class="notice error hidden"
-      role="alert"
-    ></div>
+    const codigo = Number(p.codigo);
+    const cpf = rpFCpf_(p.cpf);
 
-    <div class="actions">
-      <button
-        type="button"
-        class="muted"
-        id="btnExit"
-      >
-        Finalizar acesso
-      </button>
+    if (
+      !Number.isSafeInteger(codigo) ||
+      codigo < 1
+    ) {
+      throw new Error(
+        "CLASSIFICACAO_INVALIDA"
+      );
+    }
 
-      <button
-        type="button"
-        class="outline"
-        id="btnRefresh"
-      >
-        Atualizar situação
-      </button>
-    </div>
-  </section>
+    if (!/^\d{11}$/.test(cpf)) {
+      throw new Error(
+        "CPF_INVALIDO_NA_CLASSIFICACAO"
+      );
+    }
 
-  <!-- TELA 4: COMPROVANTE -->
-  <section
-    class="card hidden"
-    id="screenReceipt"
-  >
-    <h2>Decisão registrada</h2>
+    if (codigos.has(codigo)) {
+      throw new Error(
+        "CLASSIFICACAO_DUPLICADA_" + codigo
+      );
+    }
 
-    <div class="notice ok">
-      Sua decisão foi registrada com sucesso.
-    </div>
+    if (cpfs.has(cpf)) {
+      throw new Error(
+        "CPF_DUPLICADO"
+      );
+    }
 
-    <div class="receipt" id="receipt">
-      <h3>COMPROVANTE DE DECISÃO</h3>
-
-      <p class="stamp">
-        Concurso de Remoção –
-        Município de Contenda/PR
-      </p>
-
-      <div id="receiptDetails"></div>
-
-      <p class="stamp">
-        Documento gerado a partir da
-        resposta do sistema de homologação.
-      </p>
-    </div>
-
-    <div class="actions no-print">
-      <button
-        type="button"
-        class="primary"
-        id="btnPrint"
-      >
-        Imprimir comprovante
-      </button>
-
-      <button
-        type="button"
-        class="muted"
-        id="btnFinish"
-      >
-        Finalizar
-      </button>
-    </div>
-
-    <p class="descricao no-print">
-      O envio automático por e-mail depende
-      da ativação e homologação das
-      notificações no Apps Script.
-    </p>
-  </section>
-
-</main>
-
-<footer>
-  Prefeitura Municipal de Contenda
-  <p>Concurso de Remoção Progressiva</p>
-</footer>
-
-<script>
-"use strict";
-
-/*
-  ATENÇÃO:
-  Este endereço precisa corresponder
-  à implantação do Apps Script de testes.
-*/
-const API_URL =
-  "https://script.google.com/macros/s/AKfycbxkzNX9GE6MOsRmzjIBVrDvGKQC1HF4VAeJzl9-XTG64Iw_ChDvDNGwMeBpBuz8kC3E/exec";
-
-const $ = id => document.getElementById(id);
-
-let cpf = "";
-let token = "";
-let lastData = null;
-let busy = false;
-
-const screens = [
-  "screenCpf",
-  "screenAccess",
-  "screenDecision",
-  "screenReceipt"
-];
-
-function screen(id) {
-  screens.forEach(s => {
-    $(s).classList.toggle("hidden", s !== id);
+    codigos.add(codigo);
+    cpfs.add(cpf);
   });
 
-  window.scrollTo(0, 0);
+  return lista.sort(
+    (a, b) =>
+      Number(a.codigo) - Number(b.codigo)
+  );
 }
 
-function msg(id, text, type = "error") {
-  $(id).textContent = text;
+function rpFPorCpf_(cpf) {
 
-  $(id).className =
-    "notice " + type +
-    (text ? "" : " hidden");
+  const busca = rpFCpf_(cpf);
+
+  return rpFParticipantes_().find(
+    p => rpFCpf_(p.cpf) === busca
+  ) || null;
 }
 
-function digits(s) {
-  return String(s || "").replace(/\D/g, "");
+function rpFPorCodigo_(codigo) {
+
+  return rpFParticipantes_().find(
+    p => Number(p.codigo) === Number(codigo)
+  ) || null;
 }
 
-function mask(s) {
-  return digits(s)
-    .slice(0, 11)
-    .replace(/^(\d{3})(\d)/, "$1.$2")
-    .replace(
-      /^(\d{3})\.(\d{3})(\d)/,
-      "$1.$2.$3"
+function rpFFinalizado_(p) {
+
+  return [
+    "CONFIRMADO",
+    "FINALIZADO_REMOCAO",
+    "FINALIZADO_PERMANENCIA",
+    "FINALIZADO",
+    "CANCELADO"
+  ].includes(
+    rpFTexto_(p.situacao)
+  );
+}
+
+function rpFFila_(etapa) {
+
+  return rpFParticipantes_().filter(p =>
+    Number(p.etapa) === Number(etapa) &&
+    !rpFFinalizado_(p)
+  );
+}
+
+function rpFProximo_(etapa) {
+
+  const fila = rpFFila_(etapa);
+
+  return fila.length ? fila[0] : null;
+}
+
+
+/*********************************************************
+ 4. VAGAS
+*********************************************************/
+
+function rpFVagas_() {
+
+  const sh = rpFPlanilha_()
+    .getSheetByName("VAGAS_REMOCAO");
+
+  if (!sh) {
+    throw new Error(
+      "ABA_VAGAS_NAO_ENCONTRADA"
+    );
+  }
+
+  const dados = sh.getDataRange()
+    .getDisplayValues();
+
+  if (!dados.length) {
+    throw new Error(
+      "ABA_VAGAS_SEM_CABECALHO"
+    );
+  }
+
+  const cab = dados[0].map(
+    chaveCabecalho_
+  );
+
+  const ce = cab.indexOf("ESCOLAID");
+  const cv = cab.indexOf("VAGASTOTAL");
+
+  if (ce < 0 || cv < 0) {
+    throw new Error(
+      "CABECALHOS_VAGAS_INVALIDOS"
+    );
+  }
+
+  const mapa = {};
+
+  dados.slice(1).forEach((linha, i) => {
+
+    const escola = String(
+      linha[ce] || ""
+    ).trim();
+
+    if (!escola) return;
+
+    const chave = rpFTexto_(escola);
+
+    if (mapa[chave]) {
+      throw new Error(
+        "ESCOLA_DUPLICADA_" + escola
+      );
+    }
+
+    const texto = String(
+      linha[cv] === ""
+        ? "0"
+        : linha[cv]
+    ).trim();
+
+    if (!/^\d+$/.test(texto)) {
+      throw new Error(
+        "QUANTIDADE_INVALIDA_LINHA_" +
+        (i + 2)
+      );
+    }
+
+    const quantidade = Number(texto);
+
+    if (!Number.isSafeInteger(quantidade)) {
+      throw new Error(
+        "QUANTIDADE_FORA_DO_LIMITE"
+      );
+    }
+
+    mapa[chave] = {
+      escola: escola,
+      quantidade: quantidade,
+      linha: i + 2,
+      coluna: cv + 1
+    };
+  });
+
+  return mapa;
+}
+
+function rpFVagasDisponiveis_(origem) {
+
+  const mapa = rpFVagas_();
+
+  return Object.keys(mapa)
+    .map(k => mapa[k])
+    .filter(v =>
+      v.quantidade > 0 &&
+      rpFTexto_(v.escola) !==
+        rpFTexto_(origem)
     )
-    .replace(
-      /\.(\d{3})(\d)/,
-      ".$1-$2"
+    .map(v => ({
+      escolaId: v.escola,
+      escola: v.escola,
+      quantidade: v.quantidade
+    }))
+    .sort((a, b) =>
+      a.escola.localeCompare(
+        b.escola, "pt-BR"
+      )
     );
 }
 
-function validCpf(s) {
-  s = digits(s);
+
+/*********************************************************
+ 5. OPERAÇÕES E HISTÓRICO
+*********************************************************/
+
+function rpFLerOperacao_(id) {
+
+  const texto = rpFProps_().getProperty(
+    rpFChave_("OP", id)
+  );
+
+  return texto
+    ? JSON.parse(texto)
+    : null;
+}
+
+function rpFSalvarOperacao_(op) {
+
+  rpFProps_().setProperty(
+    rpFChave_("OP", op.id),
+    JSON.stringify(op)
+  );
+}
+
+function rpFOpsPendentes_() {
+
+  const todas = rpFProps_()
+    .getProperties();
+
+  return Object.keys(todas)
+    .filter(k =>
+      k.startsWith(
+        rpFChave_("OP", "")
+      )
+    )
+    .map(k => JSON.parse(todas[k]))
+    .filter(op =>
+      op.estado !== "CONCLUIDA" &&
+      op.estado !== "CANCELADA"
+    );
+}
+
+function rpFExigirSemFalhas_() {
+
+  const pendentes = rpFOpsPendentes_();
+
+  if (pendentes.length) {
+    throw new Error(
+      "OPERACAO_PENDENTE_DE_RECUPERACAO: " +
+      pendentes.map(o => o.id).join(",")
+    );
+  }
+}
+
+function rpFHistoricoExiste_(id, decisao) {
+
+  const sh = rpFPlanilha_()
+    .getSheetByName("HISTORICO_REMOCAO");
+
+  if (!sh || sh.getLastRow() < 2) {
+    return false;
+  }
+
+  return sh.getDataRange()
+    .getDisplayValues()
+    .slice(1)
+    .some(l =>
+      String(l[1]) === String(id) &&
+      String(l[6]) === String(decisao)
+    );
+}
+
+function rpFHistorico_(op, decisao) {
+
+  if (rpFHistoricoExiste_(
+    op.id, decisao
+  )) {
+    return;
+  }
+
+  const sh = rpFPlanilha_()
+    .getSheetByName("HISTORICO_REMOCAO");
+
+  if (!sh) {
+    throw new Error(
+      "HISTORICO_NAO_ENCONTRADO"
+    );
+  }
+
+  sh.appendRow([
+    new Date(),
+    op.id,
+    op.codigo,
+    op.nome,
+    op.cpf,
+    op.etapa,
+    decisao,
+    op.origem,
+    op.destino,
+    op.destino,
+    op.comprovante || ""
+  ]);
+}
+
+
+/*********************************************************
+ 6. CREDENCIAIS INDIVIDUAIS
+
+ A credencial é gerada administrativamente.
+
+ Nunca publicar a função de emissão como
+ endpoint público.
+
+ O CPF sozinho não autoriza decisões.
+*********************************************************/
+
+function rpFValidarCredencial_(cpf, token) {
+
+  if (!token) return false;
+
+  const texto = rpFProps_().getProperty(
+    rpFChave_("ACESSO", rpFCpf_(cpf))
+  );
+
+  if (!texto) return false;
+
+  const registro = JSON.parse(texto);
 
   if (
-    !/^\d{11}$/.test(s) ||
-    /^(\d)\1{10}$/.test(s)
+    registro.expira &&
+    Date.now() > registro.expira
   ) {
     return false;
   }
 
-  for (let t = 9; t < 11; t++) {
-    let sum = 0;
+  return registro.hash === rpFHash_(
+    rpFCpf_(cpf) + ":" + token
+  );
+}
 
-    for (let i = 0; i < t; i++) {
-      sum += Number(s[i]) * (t + 1 - i);
-    }
+function rpFGerarCredencial_(cpf) {
 
-    let d = (sum * 10) % 11;
+  rpFPlanilha_();
 
-    if (d === 10) d = 0;
+  const p = rpFPorCpf_(cpf);
 
-    if (d !== Number(s[t])) {
-      return false;
-    }
+  if (!p) {
+    throw new Error(
+      "PROFESSOR_NAO_INSCRITO"
+    );
   }
+
+  const token =
+    Utilities.getUuid() +
+    Utilities.getUuid();
+
+  rpFProps_().setProperty(
+    rpFChave_(
+      "ACESSO", rpFCpf_(cpf)
+    ),
+    JSON.stringify({
+      hash: rpFHash_(
+        rpFCpf_(cpf) + ":" + token
+      ),
+      expira: Date.now() +
+        7 * 24 * 60 * 60 * 1000
+    })
+  );
+
+  return {
+    codigo: Number(p.codigo),
+    nome: p.nome,
+    credencial: token,
+    validadeDias: 7
+  };
+}
+
+
+/*********************************************************
+ 7. PENDÊNCIA E ALERTA DE 60 MINUTOS
+*********************************************************/
+
+function rpFLerPendencia_(cpf) {
+
+  const texto = rpFProps_().getProperty(
+    rpFChave_("PENDENCIA", rpFCpf_(cpf))
+  );
+
+  return texto
+    ? JSON.parse(texto)
+    : null;
+}
+
+function rpFRegistrarPendencia_(p, motivo) {
+
+  const cpf = rpFCpf_(p.cpf);
+  const anterior = rpFLerPendencia_(cpf);
+
+  if (
+    anterior &&
+    anterior.etapa === Number(p.etapa) &&
+    anterior.motivo === motivo
+  ) {
+    return anterior;
+  }
+
+  const pendencia = {
+    id: rpFId_(),
+    cpf: cpf,
+    codigo: Number(p.codigo),
+    nome: p.nome,
+    etapa: Number(p.etapa),
+    motivo: motivo,
+    inicio: Date.now(),
+    alertaEnviado: false,
+    notificacaoEnviada: false
+  };
+
+  rpFProps_().setProperty(
+    rpFChave_("PENDENCIA", cpf),
+    JSON.stringify(pendencia)
+  );
+
+  return pendencia;
+}
+
+function rpFEncerrarPendencia_(cpf) {
+
+  rpFProps_().deleteProperty(
+    rpFChave_("PENDENCIA", rpFCpf_(cpf))
+  );
+}
+
+function rpFEmailProfessor_(cpf) {
+
+  const sh = rpFPlanilha_()
+    .getSheetByName("LOTACAO_ED_INF");
+
+  if (!sh) return "";
+
+  const dados = sh.getDataRange()
+    .getDisplayValues();
+
+  if (dados.length < 2) return "";
+
+  const cab = dados[0].map(
+    chaveCabecalho_
+  );
+
+  const cCpf = cab.indexOf("CPF");
+
+  const cEmail = cab.findIndex(c =>
+    [
+      "EMAIL",
+      "EMAILPESSOAL",
+      "EMAILPROFESSOR"
+    ].includes(c)
+  );
+
+  if (cCpf < 0 || cEmail < 0) {
+    return "";
+  }
+
+  const encontrados = dados.slice(1)
+    .filter(l =>
+      rpFCpf_(l[cCpf]) === rpFCpf_(cpf)
+    );
+
+  if (encontrados.length !== 1) {
+    return "";
+  }
+
+  const email = String(
+    encontrados[0][cEmail] || ""
+  ).trim();
+
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ? email
+    : "";
+}
+
+function rpFNotificarPendencia_(p, pendencia) {
+
+  if (!RP_FINAL.EMAIL_ATIVO) {
+    return false;
+  }
+
+  if (pendencia.notificacaoEnviada) {
+    return false;
+  }
+
+  const email = rpFEmailProfessor_(p.cpf);
+
+  if (!email) return false;
+
+  const assunto =
+    "Concurso de Remoção — Sua decisão";
+
+  const texto =
+    "Prezado(a) " + p.nome + ",\n\n" +
+    "Chegou sua vez no Concurso de Remoção " +
+    "da Rede Municipal de Contenda.\n\n" +
+    "Classificação: " + p.codigo + "\n" +
+    "Etapa: " + p.etapa + "\n" +
+    "Situação: " + pendencia.motivo + "\n\n" +
+    "Acesse a página oficial do concurso " +
+    "utilizando sua credencial individual.\n\n" +
+    "Secretaria Municipal de Educação.";
+
+  MailApp.sendEmail(
+    email,
+    assunto,
+    texto
+  );
+
+  pendencia.notificacaoEnviada = true;
+
+  rpFProps_().setProperty(
+    rpFChave_(
+      "PENDENCIA", rpFCpf_(p.cpf)
+    ),
+    JSON.stringify(pendencia)
+  );
 
   return true;
 }
 
-function errorMessage(d) {
-  const m = String(
-    d.motivo || d.error || d.erro || ""
+function rpFVerificarAlertas_() {
+
+  if (!RP_FINAL.EMAIL_ATIVO) {
+    return {
+      ok: true,
+      emailsAtivos: false,
+      alertasEnviados: 0
+    };
+  }
+
+  const admin = rpFProps_().getProperty(
+    "EMAIL_ALERTA_REMOCAO"
   );
 
-  if (m === "NAO_INSCRITO") {
-    return "CPF não inscrito no Concurso de Remoção.";
-  }
-
-  if (m === "ACESSO_NAO_AUTORIZADO") {
-    return "Credencial incorreta ou expirada.";
-  }
-
-  if (m === "JA_FINALIZADO") {
-    return "Este CPF já finalizou sua remoção.";
-  }
-
-  if (m === "VAGA_INDISPONIVEL") {
-    return "A vaga escolhida não está mais disponível. Escolha outra instituição.";
-  }
-
-  if (m === "FORA_DA_VEZ") {
-    return "Aguarde sua classificação para confirmar a decisão.";
-  }
-
-  if (m === "GRAVACAO_DESATIVADA") {
-    return "As decisões ainda não foram liberadas no ambiente de homologação.";
-  }
-
-  return (
-    d.mensagem ||
-    d.error ||
-    d.erro ||
-    d.motivo ||
-    "Não foi possível concluir a solicitação."
-  );
-}
-
-async function apiGet() {
-  const url = new URL(API_URL);
-
-  url.searchParams.set("page", "remocao");
-  url.searchParams.set("action", "consultar");
-  url.searchParams.set("cpf", cpf);
-  url.searchParams.set("credencial", token);
-
-  const r = await fetch(url, {
-    cache: "no-store",
-    redirect: "follow"
-  });
-
-  if (!r.ok) {
-    throw Error(
-      "Falha na comunicação com o sistema."
+  if (
+    !admin ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(admin)
+  ) {
+    return rpFErro_(
+      "EMAIL_ADMINISTRATIVO_NAO_CONFIGURADO"
     );
   }
 
-  return r.json();
-}
+  const todas = rpFProps_().getProperties();
 
-async function apiPost(
-  decisao,
-  escola,
-  operacaoId
-) {
-  const p = new URLSearchParams({
-    page: "remocao",
-    action: "decidir",
-    cpf: cpf,
-    credencial: token,
-    decisao: decisao,
-    escola: escola || "",
-    operacaoId: operacaoId
-  });
+  let enviados = 0;
 
-  const r = await fetch(API_URL, {
-    method: "POST",
-    body: p,
-    redirect: "follow"
-  });
-
-  if (!r.ok) {
-    throw Error(
-      "Falha na comunicação com o sistema."
-    );
-  }
-
-  return r.json();
-}
-
-/* TELA DE CPF */
-
-$("cpf").addEventListener("input", e => {
-  e.target.value = mask(e.target.value);
-});
-
-
-$('formCpf').addEventListener(
-  'submit',
-  async function(e) {
-    e.preventDefault();
-
-    if (busy) return;
-
-    const c = digits($('cpf').value);
-
-    if (!validCpf(c)) {
-      msg(
-        'cpfMsg',
-        'CPF incorreto. Verifique o número informado.'
-      );
-      return;
-    }
-
-    busy = true;
-    msg('cpfMsg', '');
-
-    const botao = document.querySelector(
-      '#formCpf button[type="submit"]'
-    );
-
-    botao.disabled = true;
-    botao.textContent = 'Consultando...';
-
-    try {
-      const url = new URL(API_URL);
-
-      url.searchParams.set('page', 'remocao');
-      url.searchParams.set(
-        'action',
-        'verificar_inscricao'
-      );
-      url.searchParams.set('cpf', c);
-
-      const resposta = await fetch(url, {
-        cache: 'no-store'
-      });
-
-      if (!resposta.ok) {
-        throw new Error(
-          'Falha na comunicação com o sistema.'
-        );
-      }
-
-      const dados = await resposta.json();
-
-      if (!dados.ok || !dados.inscrito) {
-        msg(
-          'cpfMsg',
-          dados.mensagem ||
-          'Inscrição não realizada para o Concurso de Remoção.'
-        );
-        return;
-      }
-
-     
-const urlEscolha = new URL(API_URL);
-
-urlEscolha.searchParams.set(
-  "page", "remocao"
-);
-
-urlEscolha.searchParams.set(
-  "action", "escolha_inicial"
-);
-
-urlEscolha.searchParams.set(
-  "cpf", c
-);
-
-const respostaEscolha = await fetch(
-  urlEscolha,
-  { cache: "no-store" }
-);
-
-if (!respostaEscolha.ok) {
-  throw new Error(
-    "Não foi possível consultar as vagas."
-  );
-}
-
-const dadosEscolha =
-  await respostaEscolha.json();
-
-
-if (!dadosEscolha.ok) {
-  console.error(
-    "Erro na consulta de escolha:",
-    dadosEscolha
-  );
-
-  msg(
-    "cpfMsg",
-    "Erro na consulta: " +
-    (
-      dadosEscolha.mensagem ||
-      dadosEscolha.motivo ||
-      dadosEscolha.erro ||
-      "Resposta não identificada."
-    )
-  );
-
-  return;
-}
-
-
-cpf = c;
-
-const select = $("school");
-
-select.replaceChildren(
-  new Option(
-    "Selecione uma instituição",
-    ""
-  )
-);
-
-(dadosEscolha.vagas || []).forEach(vaga => {
-  select.add(
-    new Option(
-      vaga.escola +
-      " — " +
-      vaga.quantidade +
-      " vaga(s)",
-      vaga.escolaId
-    )
-  );
-});
-
-
-/* EXIBIR AS TRÊS OPÇÕES DE DECISÃO */
-
-document.querySelectorAll(
-  'input[name="decision"]'
-).forEach(radio => {
-  const opcao = radio.closest(".choice");
-
-  if (opcao) {
-    opcao.classList.remove("hidden");
-  }
-
-  radio.checked = false;
-});
-
-$("nextChoice").classList.toggle(
-  "hidden",
-  Number(dadosEscolha.candidato?.etapa || 1) >= 3
-);
-
-$("school").disabled = true;
-
-
-const candidato = dadosEscolha.candidato || {};
-
-$("viewCode").textContent =
-  candidato.codigo ?? "–";
-
-$("viewName").textContent =
-  candidato.nome || "–";
-
-$("viewSchool").textContent =
-  candidato.lotacaoAtual || "–";
-
-$("viewStage").textContent =
-  candidato.etapa ?? "–";
-
-
-
-
-
-/* CONTROLE DE ABERTURA DAS ETAPAS */
-
-const etapaProfessor = Number(candidato.etapa);
-const etapaAtiva = Number(dadosEscolha.etapaAtiva);
-
-const aguardandoProximaEtapa =
-  etapaProfessor > etapaAtiva;
-
-const etapaLiberada =
-  etapaProfessor === etapaAtiva;
-
-const finalizado =
-  dadosEscolha.finalizado === true ||
-  dadosEscolha.removido === true ||
-  ["FINALIZADO_REMOCAO",
-   "FINALIZADO_PERMANENCIA",
-   "CONFIRMADO"].includes(
-    String(candidato.situacao || "").toUpperCase()
-  );
-
-const processoAtivo =
-  dadosEscolha.processoAtivo === true ||
-  String(dadosEscolha.processoAtivo).toUpperCase() === "SIM";
-
-
-const situacaoInicial = String(
-  candidato.situacao || ""
-).toUpperCase();
-
-const preferenciaPendente =
-  situacaoInicial === "AGUARDANDO_VEZ" ||
-  situacaoInicial === "PENDENTE_PROCESSAMENTO" ||
-  (
-    Boolean(
-      candidato.preferencia ||
-      candidato.escolaEscolhida
-    ) &&
-    situacaoInicial !== "NOVA_ESCOLHA"
-  );
-
-const liberado =
-  processoAtivo &&
-  !finalizado &&
-  etapaLiberada &&
-  !preferenciaPendente;
-
-
-$("choicePanel").classList.toggle(
-  "hidden",
-  !liberado
-);
-
-$("btnConfirm").disabled = !liberado;
-
-lastData = dadosEscolha;
-
-if (aguardandoProximaEtapa) {
-
-  msg(
-    "stateMsg",
-    "AGUARDANDO ABERTURA DA " +
-    etapaProfessor + "ª ETAPA\n\n" +
-    "Você concluiu sua participação na " +
-    (etapaProfessor - 1) + "ª etapa e " +
-    "optou por avançar para a próxima.\n\n" +
-    "Sua lotação atual permanece inalterada. " +
-    "Nenhuma vaga foi liberada.\n\n" +
-    "Aguarde a conclusão da etapa anterior " +
-    "para realizar suas escolhas.",
-    "info"
-  );
-
-} else if (finalizado) {
-
-  msg(
-    "stateMsg",
-    "Sua participação no Concurso de Remoção " +
-    "já foi finalizada.",
-    "info"
-  );
-
-} else if (!processoAtivo) {
-
-  msg(
-    "stateMsg",
-    "Aguarde a abertura do processo de remoção.",
-    "info"
-  );
-
-} else if (!etapaLiberada) {
-
-  msg(
-    "stateMsg",
-    "Esta etapa ainda não está disponível " +
-    "para suas decisões.",
-    "info"
-  );
-
-} else if (situacaoInicial === "NOVA_ESCOLHA") {
-
-  msg(
-    "stateMsg",
-    "NOVA ESCOLHA NECESSÁRIA\n\n" +
-    "A instituição indicada anteriormente não possui mais vagas disponíveis.\n\n" +
-    "Sua lotação atual permanece inalterada.\n\n" +
-    "Você pode registrar uma nova preferência, " +
-    "manter sua lotação ou avançar para a próxima etapa.",
-    "info"
-  );else {
-
-  msg(
-    "stateMsg",
-    "Inscrição localizada. Selecione uma " +
-    "das decisões disponíveis.",
-    "info"
-  );
-}
-
-screen("screenDecision");
-
-
-    } catch (erro) {
-      msg(
-        'cpfMsg',
-        'Não foi possível consultar a inscrição. Tente novamente.'
-      );
-
-    } finally {
-      busy = false;
-      botao.disabled = false;
-      botao.textContent = 'Continuar';
-    }
-  }
-);
-
-
-$("backCpf").onclick = () => {
-  screen("screenCpf");
-};
-
-/* CONSULTA DO PROFESSOR */
-
-$("formAccess").addEventListener(
-  "submit",
-  async e => {
-    e.preventDefault();
-
-    if (busy) return;
-
-    token = $("token").value.trim();
-
-    if (!token) {
-      msg(
-        "accessMsg",
-        "Informe a credencial."
-      );
-      return;
-    }
-
-    busy = true;
-    $("btnAccess").disabled = true;
-
-    try {
-      const d = await apiGet();
-
-      if (!d.ok) {
-        msg(
-          "accessMsg",
-          errorMessage(d)
-        );
-        return;
-      }
-
-      msg("accessMsg", "");
-
-      render(d);
-      screen("screenDecision");
-
-    } catch (err) {
-      msg(
-        "accessMsg",
-        err.message
-      );
-
-    } finally {
-      busy = false;
-      $("btnAccess").disabled = false;
-    }
-  }
-);
-
-/* EXIBIÇÃO DA SITUAÇÃO */
-
-function render(d) {
-  lastData = d;
-
-  const c = d.candidato || {};
-
-  $("viewCode").textContent =
-    c.codigo ?? "–";
-
-  $("viewName").textContent =
-    c.nome || "–";
-
-  $("viewSchool").textContent =
-    c.lotacaoAtual || "–";
-
-  $("viewStage").textContent =
-    c.etapa ?? "–";
-
-  const status = String(
-    c.situacao || ""
-  ).toUpperCase();
-
-  const final =
-    Boolean(d.finalizado) ||
-    status.startsWith("FINALIZADO") ||
-    status === "CONFIRMADO";
-
-  const ultimaEtapa =
-    Number(c.etapa) >= 3;
-
-  $("nextChoice").classList.toggle(
-    "hidden",
-    ultimaEtapa
-  );
-
-  document.querySelectorAll(
-    'input[name="decision"]'
-  ).forEach(x => {
-    x.checked = false;
-  });
-
-  $("school").disabled = true;
-
-  const select = $("school");
-
-  select.replaceChildren(
-    new Option(
-      "Selecione uma instituição",
-      ""
-    )
-  );
-
-  (d.vagas || []).forEach(v => {
-    const nome =
-      v.escola || v.escolaId;
-
-    if (!nome) return;
-
-    const quantidade =
-      v.quantidade != null
-        ? " — " + v.quantidade + " vaga(s)"
-        : "";
-
-    select.add(
-      new Option(
-        nome + quantidade,
-        v.escolaId || nome
+  Object.keys(todas)
+    .filter(k =>
+      k.startsWith(
+        rpFChave_("PENDENCIA", "")
       )
-    );
-  });
-
- 
-let texto = "";
-
-if (final) {
-  texto =
-    "Sua participação no Concurso de Remoção " +
-    "foi finalizada.";
-
-} else if (!d.processoAtivo) {
-  texto =
-    "Aguarde a abertura do processo de remoção.";
-
-} else if (Number(c.etapa) > Number(d.etapaAtiva)) {
-  texto =
-    "AGUARDANDO ABERTURA DA " +
-    Number(c.etapa) + "ª ETAPA\n\n" +
-    "Você concluiu sua participação na etapa " +
-    (Number(c.etapa) - 1) + " e optou por avançar.\n\n" +
-    "Sua lotação permanece inalterada. " +
-    "Aguarde a abertura da próxima etapa.";
-
-} else if (Number(c.etapa) !== Number(d.etapaAtiva)) {
-  texto =
-    "Sua etapa não está disponível para decisões.";
-
-} else if (status === "NOVA_ESCOLHA") {
-  texto =
-    "NOVA ESCOLHA NECESSÁRIA\n\n" +
-    "A instituição indicada anteriormente " +
-    "não possui mais vagas disponíveis.\n\n" +
-    "A vaga foi preenchida por outro professor " +
-    "com prioridade superior na classificação.\n\n" +
-    "Sua lotação atual permanece inalterada.\n\n" +
-    "Você já pode registrar uma nova preferência, " +
-    "manter sua lotação atual ou avançar " +
-    "para a próxima etapa.\n\n" +
-    "Uma nova preferência aguardará sua " +
-    "classificação para confirmação da transferência.";
-
-} else if (c.preferencia) {
-  texto =
-    "PREFERÊNCIA REGISTRADA\n\n" +
-    "Instituição: " + c.preferencia + "\n\n" +
-    "Sua transferência ainda não foi confirmada. " +
-    "Aguarde o processamento conforme " +
-    "a ordem de classificação.";
-
-} else if (!d.minhaVez) {
-  texto =
-    "Você pode registrar sua preferência, " +
-    "manter a lotação atual ou avançar de etapa.\n\n" +
-    "A transferência para outra instituição " +
-    "será confirmada somente quando chegar " +
-    "sua vez na classificação.";
-
-} else {
-  texto =
-    "Sua etapa está aberta. Selecione " +
-    "uma das decisões disponíveis.";
-}
-
-  msg("stateMsg", texto, "info");
-
-  
-const etapaProfessorAtual = Number(c.etapa);
-const etapaAbertaAtual = Number(d.etapaAtiva);
-
-const aguardandoEtapa =
-  etapaProfessorAtual > etapaAbertaAtual;
-
-const etapaDisponivel =
-  etapaProfessorAtual === etapaAbertaAtual;
-
-
-const situacaoAtual = String(
-  c.situacao || ""
-).toUpperCase();
-
-const possuiPreferencia =
-  situacaoAtual === "AGUARDANDO_VEZ" ||
-  situacaoAtual === "PENDENTE_PROCESSAMENTO" ||
-  (
-    Boolean(c.preferencia || c.escolaEscolhida) &&
-    situacaoAtual !== "NOVA_ESCOLHA"
-  );
-
-const permitirOpcoes =
-  d.processoAtivo === true &&
-  !final &&
-  etapaDisponivel &&
-  !possuiPreferencia;
-
-
-$("choicePanel").classList.toggle(
-  "hidden",
-  !permitirOpcoes
-);
-
-$("btnConfirm").disabled = !permitirOpcoes;
-
-if (aguardandoEtapa) {
-  msg(
-    "stateMsg",
-    "AGUARDANDO ABERTURA DA " +
-    etapaProfessorAtual + "ª ETAPA\n\n" +
-    "Sua decisão de avançar foi registrada. " +
-    "Você permanece na sua lotação atual.\n\n" +
-    "Aguarde a Secretaria concluir a etapa " +
-    "anterior e liberar a próxima.",
-    "info"
-  );
-}
-
-}
-
-/* SELEÇÃO DE VAGA */
-
-document.querySelectorAll(
-  'input[name="decision"]'
-).forEach(r => {
-  r.addEventListener("change", () => {
-    $("school").disabled =
-      r.value !== "ESCOLHER_VAGA" ||
-      !r.checked;
-  });
-});
-
-/* ATUALIZAR SITUAÇÃO */
-
-$("btnRefresh").onclick = async () => {
-  if (busy) return;
-
-  busy = true;
-  $("btnRefresh").disabled = true;
-
-  try {
-    const d = await apiGet();
-
-    if (!d.ok) {
-      throw Error(errorMessage(d));
-    }
-
-    render(d);
-    msg("decisionMsg", "");
-
-  } catch (e) {
-    msg(
-      "decisionMsg",
-      e.message
-    );
-
-  } finally {
-    busy = false;
-    $("btnRefresh").disabled = false;
-  }
-};
-
-/* IDENTIFICADOR ÚNICO DA DECISÃO */
-
-function operationId() {
-  if (
-    window.crypto &&
-    crypto.randomUUID
-  ) {
-    return "WEB_" + crypto.randomUUID();
-  }
-
-  return (
-    "WEB_" +
-    Date.now() +
-    "_" +
-    Math.random().toString(36).slice(2, 14)
-  );
-}
-
-/* CONFIRMAÇÃO DA DECISÃO */
-
-$("btnConfirm").onclick = async () => {
-  if (busy || !lastData) return;
-
-  const selected = document.querySelector(
-    'input[name="decision"]:checked'
-  );
-
-  if (!selected) {
-    msg(
-      "decisionMsg",
-      "Selecione uma decisão."
-    );
-    return;
-  }
-
-  const decisao = selected.value;
-
-  const escola =
-    decisao === "ESCOLHER_VAGA"
-      ? $("school").value
-      : "";
-
-  if (
-    decisao === "ESCOLHER_VAGA" &&
-    !escola
-  ) {
-    msg(
-      "decisionMsg",
-      "Selecione uma instituição com vaga disponível."
-    );
-    return;
-  }
-
-  const descricoes = {
-    ESCOLHER_VAGA:
-      "confirmar sua transferência para " +
-      escola,
-
-    MANTER:
-      "permanecer na lotação atual e encerrar sua participação",
-
-    PROXIMA_ETAPA:
-      "avançar para a próxima etapa mantendo sua lotação"
-  };
-
-  if (
-    !confirm(
-      "Deseja " + descricoes[decisao] + "?"
     )
-  ) {
-    return;
-  }
+    .forEach(chave => {
 
-  busy = true;
-  $("btnConfirm").disabled = true;
-
-  const id = operationId();
-
-  try {
-    
-const decisaoEnviada =
-  decisao === "ESCOLHER_VAGA"
-    ? "PREFERENCIA"
-    : decisao;
-
-const d = await apiPost(
-  decisaoEnviada,
-  escola,
-  id
-);
-    
-if (!d.ok) {
-  console.error(
-    "ERRO RETORNADO PELO APPS SCRIPT:",
-    d
-  );
-
-  msg(
-    "decisionMsg",
-    "Erro ao registrar a decisão: " +
-    errorMessage(d)
-  );
-
-  return;
-}
-
-    const c =
-      lastData.candidato || {};
-
-    const descricaoDecisao =
-      decisao === "ESCOLHER_VAGA"
-        ? "Preferência de vaga registrada — aguardando classificação"
-        : decisao === "MANTER"
-          ? "Manter lotação atual"
-          : "Avançar para a próxima etapa";
-
-    const detalhes = [
-      ["Professor", c.nome],
-      ["Classificação", c.codigo],
-      ["Etapa da decisão", c.etapa],
-      ["Lotação anterior", c.lotacaoAtual],
-      ["Decisão", descricaoDecisao],
-      [
-        "Destino / lotação resultante",
-        d.lotacaoAtual ||
-        d.destino ||
-        c.lotacaoAtual
-      ],
-      [
-        "Número da operação",
-        d.operacaoId || id
-      ],
-      [
-        "Data da emissão",
-        new Date().toLocaleString("pt-BR")
-      ]
-    ];
-
-    const div = $("receiptDetails");
-
-    div.replaceChildren();
-
-    detalhes.forEach(([label, value]) => {
-      const p = document.createElement("p");
-      const strong =
-        document.createElement("strong");
-
-      strong.textContent = label + ": ";
-
-      p.append(
-        strong,
-        document.createTextNode(
-          String(value ?? "–")
-        )
+      const pendencia = JSON.parse(
+        todas[chave]
       );
 
-      div.append(p);
+      if (pendencia.alertaEnviado) {
+        return;
+      }
+
+      const minutos =
+        (Date.now() - pendencia.inicio) /
+        60000;
+
+      if (
+        minutos <
+        RP_FINAL.ALERTA_MINUTOS
+      ) {
+        return;
+      }
+
+      const p = rpFPorCpf_(
+        pendencia.cpf
+      );
+
+      if (
+        !p ||
+        rpFFinalizado_(p) ||
+        Number(p.etapa) !== pendencia.etapa
+      ) {
+        rpFEncerrarPendencia_(
+          pendencia.cpf
+        );
+        return;
+      }
+
+      MailApp.sendEmail(
+        admin,
+        "Alerta — Concurso de Remoção",
+        "O professor de classificação " +
+        pendencia.codigo +
+        " está aguardando decisão há " +
+        Math.floor(minutos) +
+        " minutos.\n\n" +
+        "Professor: " + pendencia.nome +
+        "\nEtapa: " + pendencia.etapa +
+        "\nMotivo: " + pendencia.motivo +
+        "\n\nA classificação não foi alterada."
+      );
+
+      pendencia.alertaEnviado = true;
+
+      rpFProps_().setProperty(
+        chave,
+        JSON.stringify(pendencia)
+      );
+
+      enviados++;
     });
 
-    screen("screenReceipt");
-
-  } catch (e) {
-    msg(
-      "decisionMsg",
-      "Não foi possível confirmar o resultado. Consulte novamente sua situação antes de tentar outra decisão. " +
-      e.message
-    );
-
-  } finally {
-    busy = false;
-    $("btnConfirm").disabled = false;
-  }
-};
-
-/* FINALIZAR E IMPRIMIR */
-
-function finish() {
-  cpf = "";
-  token = "";
-  lastData = null;
-
-  $("cpf").value = "";
-  $("token").value = "";
-
-  msg("cpfMsg", "");
-  msg("accessMsg", "");
-  msg("decisionMsg", "");
-
-  screen("screenCpf");
+  return {
+    ok: true,
+    alertasEnviados: enviados
+  };
 }
 
-$("btnExit").onclick = finish;
-$("btnFinish").onclick = finish;
 
-$("btnPrint").onclick = () => {
-  window.print();
-};
+/*********************************************************
+ 8. CONSULTA DA PÁGINA
+*********************************************************/
 
-</script>
+function rpIntegradoConsultar_(dados) {
 
-</body>
-</html>
+  try {
+
+    rpFPlanilha_();
+
+    const cpf = rpFCpf_(dados.cpf);
+
+    if (!rpFValidarCredencial_(
+      cpf, dados.credencial
+    )) {
+      return rpFErro_(
+        "ACESSO_NAO_AUTORIZADO",
+        "Credencial inválida ou expirada."
+      );
+    }
+
+    const p = rpFPorCpf_(cpf);
+
+    if (!p) {
+      return rpFErro_("NAO_INSCRITO");
+    }
+
+    const config = rpFConfig_();
+
+    const proximo = rpFProximo_(
+      config.etapa
+    );
+
+    const minhaVez = !!proximo &&
+      Number(proximo.codigo) ===
+      Number(p.codigo);
+
+    const etapaCorreta =
+      Number(p.etapa) === config.etapa;
+
+    const finalizado = rpFFinalizado_(p);
+
+    const podeDecidir =
+      config.ativo &&
+      etapaCorreta &&
+      minhaVez &&
+      !finalizado &&
+      rpFOpsPendentes_().length === 0;
+
+    return {
+      ok: true,
+
+      candidato: {
+        codigo: Number(p.codigo),
+        nome: p.nome,
+        lotacaoAtual: p.lotacaoAtual,
+        etapa: Number(p.etapa),
+        situacao: p.situacao,
+        preferencia:
+          p.escolaEscolhida || "",
+        tipoDecisao:
+          p.tipoDecisao || ""
+      },
+
+      etapaAtiva: config.etapa,
+      processoAtivo: config.ativo,
+      minhaVez: minhaVez,
+      podeDecidir: podeDecidir,
+
+      podeEscolher:
+        config.ativo &&
+        etapaCorreta &&
+        !finalizado,
+
+      finalizado: finalizado,
+
+      proximaClassificacao: proximo
+        ? Number(proximo.codigo)
+        : null,
+
+      vagas: config.ativo &&
+        etapaCorreta &&
+        !finalizado
+          ? rpFVagasDisponiveis_(
+              p.lotacaoAtual
+            )
+          : [],
+
+      mensagem: finalizado
+        ? "Participação encerrada."
+        : minhaVez
+          ? "Chegou sua vez."
+          : "Aguarde sua classificação."
+    };
+
+  } catch (e) {
+
+    return rpFErro_(
+      "ERRO_CONSULTA",
+      String(e.message || e)
+    );
+  }
+}
+
+
+/*********************************************************
+ 9. GRAVAÇÃO DE DECISÕES
+
+ A operação é registrada antes das alterações.
+
+ Se ocorrer erro depois do início da gravação,
+ o sistema bloqueia novas movimentações.
+*********************************************************/
+
+function rpFExecutarDecisao_(p, tipo, destino, id) {
+
+  const ss = rpFPlanilha_();
+
+  const shAcesso = ss.getSheetByName(
+    "ACESSO_REMOCAO"
+  );
+
+  const shVagas = ss.getSheetByName(
+    "VAGAS_REMOCAO"
+  );
+
+  const origem = String(
+    p.lotacaoAtual || ""
+  ).trim();
+
+  const etapa = Number(p.etapa);
+
+  const op = {
+    id: id,
+    codigo: Number(p.codigo),
+    nome: p.nome,
+    cpf: rpFCpf_(p.cpf),
+    etapa: etapa,
+    tipo: tipo,
+    origem: origem,
+    destino: destino || origem,
+    comprovante: id,
+    estado: "PREPARADA"
+  };
+
+  let vagaOrigem = null;
+  let vagaDestino = null;
+
+  if (tipo === "ESCOLHER_VAGA") {
+
+    const vagas = rpFVagas_();
+
+    vagaOrigem = vagas[
+      rpFTexto_(origem)
+    ];
+
+    vagaDestino = vagas[
+      rpFTexto_(destino)
+    ];
+
+    if (
+      !vagaOrigem ||
+      !vagaDestino ||
+      rpFTexto_(origem) ===
+        rpFTexto_(destino)
+    ) {
+      return rpFErro_(
+        "DESTINO_INVALIDO"
+      );
+    }
+
+    if (vagaDestino.quantidade <= 0) {
+      return rpFErro_(
+        "VAGA_INDISPONIVEL"
+      );
+    }
+
+    op.destino = vagaDestino.escola;
+
+    op.vagasOrigemAntes =
+      vagaOrigem.quantidade;
+
+    op.vagasDestinoAntes =
+      vagaDestino.quantidade;
+  }
+
+  if (
+    tipo === "PROXIMA_ETAPA" &&
+    etapa >= 3
+  ) {
+    return rpFErro_(
+      "ULTIMA_ETAPA"
+    );
+  }
+
+  rpFSalvarOperacao_(op);
+
+  try {
+
+    if (tipo === "ESCOLHER_VAGA") {
+
+      shVagas.getRange(
+        vagaDestino.linha,
+        vagaDestino.coluna
+      ).setValue(
+        vagaDestino.quantidade - 1
+      );
+
+      shVagas.getRange(
+        vagaOrigem.linha,
+        vagaOrigem.coluna
+      ).setValue(
+        vagaOrigem.quantidade + 1
+      );
+
+      shAcesso.getRange(
+        p._linha, 6
+      ).setValue(
+        vagaDestino.escola
+      );
+
+      shAcesso.getRange(
+        p._linha, 8
+      ).setValue(
+        RP_FINAL.STATUS.REMOVIDO
+      );
+
+    } else if (tipo === "MANTER") {
+
+      shAcesso.getRange(
+        p._linha, 8
+      ).setValue(
+        RP_FINAL.STATUS.PERMANENCIA
+      );
+
+    } else if (tipo === "PROXIMA_ETAPA") {
+
+      shAcesso.getRange(
+        p._linha, 8
+      ).setValue(
+        RP_FINAL.STATUS.AGUARDANDO_ETAPA
+      );
+
+      shAcesso.getRange(
+        p._linha, 9
+      ).setValue(etapa + 1);
+    }
+
+    shAcesso.getRange(
+      p._linha, 10
+    ).setValue(
+      tipo === "ESCOLHER_VAGA"
+        ? op.destino
+        : ""
+    );
+
+    shAcesso.getRange(
+      p._linha, 11
+    ).setValue(new Date());
+
+    shAcesso.getRange(
+      p._linha, 12
+    ).setValue(tipo);
+
+    shAcesso.getRange(
+      p._linha, 13
+    ).setValue(id);
+
+    shAcesso.getRange(
+      p._linha, 14
+    ).setValue(id);
+
+    SpreadsheetApp.flush();
+
+    const atualizado = rpFPorCodigo_(
+      p.codigo
+    );
+
+    if (!atualizado) {
+      throw new Error(
+        "PROFESSOR_NAO_ENCONTRADO_APOS_GRAVACAO"
+      );
+    }
+
+    if (tipo === "ESCOLHER_VAGA") {
+
+      const depois = rpFVagas_();
+
+      if (
+        depois[rpFTexto_(origem)]
+          .quantidade !==
+          vagaOrigem.quantidade + 1 ||
+        depois[rpFTexto_(destino)]
+          .quantidade !==
+          vagaDestino.quantidade - 1 ||
+        rpFTexto_(
+          atualizado.lotacaoAtual
+        ) !== rpFTexto_(destino)
+      ) {
+        throw new Error(
+          "FALHA_CONFERENCIA_TRANSFERENCIA"
+        );
+      }
+
+    } else {
+
+      if (
+        rpFTexto_(
+          atualizado.lotacaoAtual
+        ) !== rpFTexto_(origem)
+      ) {
+        throw new Error(
+          "LOTACAO_ALTERADA_INDEVIDAMENTE"
+        );
+      }
+
+      if (
+        tipo === "PROXIMA_ETAPA" &&
+        Number(atualizado.etapa) !==
+          etapa + 1
+      ) {
+        throw new Error(
+          "FALHA_CONFERENCIA_ETAPA"
+        );
+      }
+    }
+
+    rpFHistorico_(
+      op,
+      tipo === "ESCOLHER_VAGA"
+        ? "REMOCAO_CONFIRMADA"
+        : tipo
+    );
+
+    op.estado = "CONCLUIDA";
+
+    rpFSalvarOperacao_(op);
+
+    rpFEncerrarPendencia_(
+      p.cpf
+    );
+
+    return {
+      ok: true,
+      codigo: op.codigo,
+      decisao: tipo,
+      origem: origem,
+      destino: op.destino,
+      lotacaoAtual:
+        tipo === "ESCOLHER_VAGA"
+          ? op.destino
+          : origem,
+      etapa: tipo === "PROXIMA_ETAPA"
+        ? etapa + 1
+        : etapa,
+      vagasAlteradas:
+        tipo === "ESCOLHER_VAGA",
+      comprovanteId: id,
+      operacaoId: id
+    };
+
+  } catch (e) {
+
+    op.estado = "RECUPERACAO_NECESSARIA";
+    op.erro = String(
+      e.message || e
+    );
+
+    rpFSalvarOperacao_(op);
+
+    throw e;
+  }
+}
+
+
+/*********************************************************
+ 10. PREFERÊNCIA ANTECIPADA
+
+ Não movimenta vagas.
+ Não libera lotação.
+ Não reserva a instituição escolhida.
+*********************************************************/
+
+function rpFRegistrarPreferencia_(p, escola, id) {
+  const vagas = rpFVagas_();
+  const destino = vagas[rpFTexto_(escola)];
+  if (!destino || destino.quantidade <= 0) return rpFErro_("VAGA_INDISPONIVEL");
+  if (rpFTexto_(destino.escola) === rpFTexto_(p.lotacaoAtual)) return rpFErro_("PROPRIA_LOTACAO");
+  const situacao = rpFTexto_(p.situacao);
+  if (rpFTexto_(p.tipoDecisao) === "PREFERENCIA" && situacao !== "NOVA_ESCOLHA")
+    return rpFErro_("PREFERENCIA_JA_REGISTRADA");
+  const op = {id:id,codigo:Number(p.codigo),nome:p.nome,cpf:rpFCpf_(p.cpf),
+    etapa:Number(p.etapa),tipo:"PREFERENCIA",origem:p.lotacaoAtual,
+    destino:destino.escola,comprovante:"",estado:"PREPARADA"};
+  rpFSalvarOperacao_(op);
+  try {
+    const sh=rpFPlanilha_().getSheetByName("ACESSO_REMOCAO");
+    sh.getRange(p._linha,8).setValue(RP_FINAL.STATUS.AGUARDANDO);
+    sh.getRange(p._linha,10).setValue(destino.escola);
+    sh.getRange(p._linha,11).setValue(new Date());
+    sh.getRange(p._linha,12).setValue("PREFERENCIA");
+    // N é reservado à operação de decisão final; preferência fica no histórico.
+    SpreadsheetApp.flush();
+    rpFHistorico_(op,"PREFERENCIA");
+    op.estado="CONCLUIDA";rpFSalvarOperacao_(op);rpFEncerrarPendencia_(p.cpf);
+    return {ok:true,decisao:"PREFERENCIA",escolaEscolhida:destino.escola,
+      vagasAlteradas:false,mensagem:"Preferência registrada, sem reserva de vaga."};
+  } catch(e) {
+    op.estado="RECUPERACAO_NECESSARIA";op.erro=String(e.message||e);
+    rpFSalvarOperacao_(op);throw e;
+  }
+}
+
+
+/*********************************************************
+ 11. PROCESSAMENTO MANUAL DA FILA
+
+ Executar com o bloqueio já adquirido.
+
+ Não ultrapassa professor pendente.
+
+ Quando encontra preferência indisponível,
+ marca NOVA_ESCOLHA e aguarda decisão.
+*********************************************************/
+
+function rpFProcessarFilaInterno_() {
+  // Mantida apenas para compatibilidade. Não executa movimentações.
+  return rpFErro_("PROCESSAMENTO_MANUAL_OBRIGATORIO",
+    "Utilize processarRemocaoManual no editor do Apps Script.");
+}
+
+function rpFProcessarFila_() {
+  return rpFErro_("PROCESSAMENTO_MANUAL_OBRIGATORIO",
+    "Utilize processarRemocaoManual no editor do Apps Script.");
+}
+
+/**
+ * COMANDO ADMINISTRATIVO MANUAL.
+ * Confirma preferências em ordem de classificação, sem ultrapassar
+ * participante que ainda não registrou preferência ou que precisa
+ * fazer nova escolha. O professor com NOVA_ESCOLHA pode enviar outra
+ * preferência pelo site, mas a transferência só será efetivada
+ * numa nova execução administrativa.
+ *
+ * A gravação de cada transferência utiliza a rotina existente,
+ * com histórico, bloqueio, conferência e idempotência.
+ */
+function processarRemocaoManual() {
+  return rpFLock_(() => {
+    rpFExigirEscrita_();
+    const cfg = rpFConfig_();
+    if (!cfg.ativo) return rpFErro_("PROCESSO_INATIVO");
+    if (![1, 2, 3].includes(cfg.etapa)) return rpFErro_("ETAPA_INVALIDA");
+
+    const resultado = {
+      ok: true, modo: "MANUAL", etapa: cfg.etapa,
+      transferencias: [], novasEscolhas: [],
+      aguardando: null, processados: 0
+    };
+    // Um professor por iteração; sempre relê a planilha e as vagas.
+    // O limite é a quantidade de inscritos, para impedir laços infinitos.
+    const limite = rpFParticipantes_().length;
+    for (let i = 0; i < limite; i++) {
+      const p = rpFProximo_(cfg.etapa);
+      if (!p) {
+        resultado.estado = "ETAPA_CONCLUIDA";
+        break;
+      }
+      const situacao = rpFTexto_(p.situacao);
+      const destino = String(p.escolaEscolhida || "").trim();
+      const preferencia = rpFTexto_(p.tipoDecisao) === "PREFERENCIA";
+
+      if (situacao === "NOVA_ESCOLHA") {
+        resultado.aguardando = {codigo:Number(p.codigo), situacao:"NOVA_ESCOLHA"};
+        resultado.estado = "AGUARDANDO_NOVA_ESCOLHA";
+        break;
+      }
+      if (!preferencia || !destino) {
+        resultado.aguardando = {codigo:Number(p.codigo), situacao:situacao || "PENDENTE"};
+        resultado.estado = "AGUARDANDO_PREFERENCIA";
+        break;
+      }
+      const vaga = rpFVagas_()[rpFTexto_(destino)];
+      if (!vaga || vaga.quantidade <= 0) {
+        const sh = rpFPlanilha_().getSheetByName("ACESSO_REMOCAO");
+        sh.getRange(p._linha, 8).setValue(RP_FINAL.STATUS.NOVA_ESCOLHA);
+        SpreadsheetApp.flush();
+        const atualizado = rpFPorCodigo_(p.codigo);
+        rpFRegistrarPendencia_(atualizado, "NOVA_ESCOLHA");
+        resultado.novasEscolhas.push({codigo:Number(p.codigo), escola:destino});
+        resultado.aguardando = {codigo:Number(p.codigo), situacao:"NOVA_ESCOLHA"};
+        resultado.estado = "AGUARDANDO_NOVA_ESCOLHA";
+        break;
+      }
+      // ID estável por professor/etapa/preferência, para não duplicar
+      // uma transferência em caso de nova execução do comando.
+      const id = "MANUAL_" + cfg.etapa + "_" + Number(p.codigo) + "_" +
+        rpFHash_(rpFCpf_(p.cpf) + ":" + destino).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32);
+      const anterior = rpFLerOperacao_(id);
+      if (anterior) {
+        throw new Error("OPERACAO_MANUAL_JA_EXISTENTE_" + id +
+          "_CONFIRA_O_HISTORICO_ANTES_DE_CONTINUAR");
+      }
+      const confirmacao = rpFExecutarDecisao_(p, "ESCOLHER_VAGA", destino, id);
+      if (!confirmacao.ok) {
+        resultado.ok = false;
+        resultado.estado = "INTERRUPCAO";
+        resultado.erro = confirmacao;
+        break;
+      }
+      resultado.transferencias.push({
+        codigo:Number(p.codigo), origem:confirmacao.origem,
+        destino:confirmacao.destino
+      });
+      resultado.processados++;
+    }
+    if (!resultado.estado) resultado.estado = "LIMITE_DE_SEGURANCA_ATINGIDO";
+    Logger.log(JSON.stringify(resultado, null, 2));
+    return resultado;
+  });
+}
+
+/*********************************************************
+ 12. RECEBIMENTO DAS DECISÕES DA PÁGINA
+*********************************************************/
+
+function rpIntegradoDecidir_(dados) {
+  try {
+    return rpFLock_(() => {
+      rpFPlanilha_();
+      const cpf=rpFCpf_(dados.cpf);
+      
+const homologacaoSemCodigo =
+  REMOCAO_AMBIENTE_TESTE === true &&
+  rpFPlanilha_().getId() ===
+    REMOCAO_ID_PLANILHA_TESTE &&
+  rpFProps_().getProperty(
+    "RP_HOMOLOGACAO_SEM_CODIGO"
+  ) === "SIM";
+
+if (
+  !homologacaoSemCodigo &&
+  !rpFValidarCredencial_(
+    cpf,
+    dados.credencial
+  )
+) {
+  return rpFErro_(
+    "ACESSO_NAO_AUTORIZADO"
+  );
+}
+      
+const id = String(dados.operacaoId || "").trim();
+
+if (!/^[A-Za-z0-9_-]{8,120}$/.test(id)) {
+  return rpFErro_("OPERACAO_ID_INVALIDO");
+}
+
+const tipo = rpFTexto_(dados.decisao);
+
+      if (!["PREFERENCIA","ESCOLHER_VAGA","MANTER","PROXIMA_ETAPA"].includes(tipo))
+        return rpFErro_("DECISAO_INVALIDA");
+      const anterior=rpFLerOperacao_(id);
+      if (anterior) {
+        const mesma=anterior.cpf===cpf && anterior.tipo===tipo &&
+          (!["PREFERENCIA","ESCOLHER_VAGA"].includes(tipo) ||
+            rpFTexto_(anterior.destino)===rpFTexto_(dados.escola));
+        if (!mesma) return rpFErro_("OPERACAO_ID_REUTILIZADO");
+        return {ok:anterior.estado==="CONCLUIDA",jaRegistrado:true,
+          estado:anterior.estado,operacaoId:id};
+      }
+      rpFExigirEscrita_();
+      const p=rpFPorCpf_(cpf);
+      if (!p) return rpFErro_("NAO_INSCRITO");
+      if (rpFFinalizado_(p)) return rpFErro_("JA_FINALIZADO");
+      const cfg=rpFConfig_();
+      if (!cfg.ativo || Number(p.etapa)!==cfg.etapa) return rpFErro_("ETAPA_NAO_DISPONIVEL");
+      const proximo=rpFProximo_(cfg.etapa);
+      const minhaVez=!!proximo && Number(proximo.codigo)===Number(p.codigo);
+      // A transferência é exclusivamente administrativa no modo manual.
+      if (tipo === "ESCOLHER_VAGA") {
+        return rpFErro_("CONFIRMACAO_EXCLUSIVAMENTE_ADMINISTRATIVA");
+      }
+      let resultado;
+      if (tipo==="PREFERENCIA") {
+        resultado=rpFRegistrarPreferencia_(p,dados.escola,id);
+      } else if (tipo==="ESCOLHER_VAGA") {
+        // Escolha direta é confirmação da transferência, inclusive em NOVA_ESCOLHA.
+        // Não registrar uma preferência que exigiria uma segunda confirmação.
+        resultado=rpFExecutarDecisao_(p,tipo,dados.escola,id);
+      } else {
+        resultado=rpFExecutarDecisao_(p,tipo,"",id);
+      }
+      if (!resultado.ok) return resultado;
+      if (RP_FINAL.PROCESSAMENTO_AUTOMATICO) {
+        try { resultado.continuidade=rpFProcessarFilaInterno_(); }
+        catch(e) { resultado.continuidade={ok:false,motivo:"CONTINUIDADE_INTERROMPIDA",
+          mensagem:String(e.message||e)}; }
+      }
+      return resultado;
+    });
+  } catch(e) {return rpFErro_("PROCESSAMENTO_INTERROMPIDO",String(e.message||e));}
+}
+
+
+/*********************************************************
+ 13. MUDANÇA ADMINISTRATIVA DE ETAPA
+
+ Não altera lotações.
+ Não altera vagas.
+
+ Só permite avançar quando não há
+ participantes pendentes na etapa atual.
+*********************************************************/
+
+function rpFAbrirEtapaInterno_(novaEtapa) {
+
+  rpFExigirEscrita_();
+
+  const config = rpFConfig_();
+
+  if (
+    ![1, 2, 3].includes(novaEtapa)
+  ) {
+    return rpFErro_(
+      "ETAPA_INVALIDA"
+    );
+  }
+
+  if (
+    novaEtapa !== config.etapa + 1
+  ) {
+    return rpFErro_(
+      "SEQUENCIA_DE_ETAPAS_INVALIDA"
+    );
+  }
+
+  if (
+    config.etapa >= 1 &&
+    rpFFila_(config.etapa).length > 0
+  ) {
+    return rpFErro_(
+      "ETAPA_ATUAL_PENDENTE"
+    );
+  }
+
+  alterarConfig_(
+    "ETAPA_ATIVA",
+    novaEtapa
+  );
+
+  alterarConfig_(
+    "PROCESSO_ATIVO",
+    "SIM"
+  );
+
+  return {
+    ok: true,
+    etapaAtiva: novaEtapa,
+    vagasAlteradas: false
+  };
+}
+
+function rpFAbrirEtapa_(novaEtapa) {
+
+  return rpFLock_(() => {
+
+    const resultado =
+      rpFAbrirEtapaInterno_(
+        Number(novaEtapa)
+      );
+
+    if (
+      resultado.ok &&
+      RP_FINAL.PROCESSAMENTO_AUTOMATICO
+    ) {
+      resultado.continuidade =
+        rpFProcessarFilaInterno_();
+    }
+
+    return resultado;
+  });
+}
+
+
+/*********************************************************
+ 14. ROTINA AUTOMÁTICA DESATIVADA
+
+ Não instalar gatilho periódico.
+
+ Com GRAVACAO_ATIVA=false, não movimenta
+ vagas nem altera a situação dos professores.
+*********************************************************/
+
+function rpFRotinaAutomatica() {
+  return {ok:true, modo:"MANUAL", processamentoExecutado:false,
+    mensagem:"Rotina automática desativada."};
+}
+
+function rpFInstalarGatilho() {
+  return rpFErro_("GATILHO_DESATIVADO",
+    "O concurso utiliza processamento manual.");
+}
+
+function desativarGatilhosRemocao() {
+  rpFPlanilha_();
+  const nomes = ["rpFRotinaAutomatica", "rpFProcessarFila_", "rpFProcessarFilaInterno_"];
+  let removidos = 0;
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (nomes.includes(t.getHandlerFunction())) {
+      ScriptApp.deleteTrigger(t);
+      removidos++;
+    }
+  });
+  return {ok:true, gatilhosRemovidos:removidos, modo:"MANUAL"};
+}
+
+/*********************************************************
+ 15. CONFERÊNCIA DE FALHAS
+
+ Somente leitura.
+
+ A recuperação não é autorizada
+ automaticamente, pois é necessário
+ conferir o estado das células.
+*********************************************************/
+
+function rpFConferirOperacao_(id) {
+
+  const op = rpFLerOperacao_(id);
+
+  if (!op) {
+    return rpFErro_(
+      "OPERACAO_NAO_ENCONTRADA"
+    );
+  }
+
+  const p = rpFPorCodigo_(
+    op.codigo
+  );
+
+  const vagas = rpFVagas_();
+
+  return {
+    ok: true,
+    operacao: op,
+    professor: p ? {
+      codigo: Number(p.codigo),
+      situacao: p.situacao,
+      etapa: Number(p.etapa),
+      lotacaoAtual: p.lotacaoAtual,
+      operacaoId: p.operacaoId
+    } : null,
+    origem: vagas[
+      rpFTexto_(op.origem)
+    ] || null,
+    destino: vagas[
+      rpFTexto_(op.destino)
+    ] || null,
+    historicoRegistrado:
+      rpFHistoricoExiste_(
+        op.id,
+        op.tipo === "ESCOLHER_VAGA"
+          ? "REMOCAO_CONFIRMADA"
+          : op.tipo
+      )
+  };
+}
+
+function rpFListarFalhas_() {
+
+  return {
+    ok: true,
+    operacoesPendentes:
+      rpFOpsPendentes_()
+  };
+}
+
+
+/*********************************************************
+ 16. DIAGNÓSTICO COMPLETO
+
+ SOMENTE LEITURA.
+*********************************************************/
+
+function diagnosticarRemocaoFinal() {
+
+  const ss = rpFPlanilha_();
+
+  const config = rpFConfig_();
+
+  const participantes =
+    rpFParticipantes_();
+
+  const proximo = rpFProximo_(
+    config.etapa
+  );
+
+  const resultado = {
+
+    ok: true,
+
+    ambiente: "TESTE",
+
+    planilha: ss.getName(),
+
+    moduloConsulta:
+      typeof rpIntegradoConsultar_ ===
+      "function",
+
+    moduloDecisao:
+      typeof rpIntegradoDecidir_ ===
+      "function",
+
+    processoAtivo: config.ativo,
+
+    etapaAtiva: config.etapa,
+
+    totalInscritos:
+      participantes.length,
+
+    proximaClassificacao:
+      proximo
+        ? Number(proximo.codigo)
+        : null,
+
+    proximaSituacao:
+      proximo
+        ? proximo.situacao
+        : null,
+
+    vagas: rpFVagas_(),
+
+    operacoesPendentes:
+      rpFOpsPendentes_(),
+
+    gravacaoAtiva:
+      RP_FINAL.GRAVACAO_ATIVA,
+
+    emailAtivo:
+      RP_FINAL.EMAIL_ATIVO,
+
+    prazoAlertaMinutos:
+      RP_FINAL.ALERTA_MINUTOS,
+
+    nenhumaGravacaoExecutada:
+      true
+  };
+
+  Logger.log(
+    JSON.stringify(
+      resultado, null, 2
+    )
+  );
+
+  return resultado;
+}
+
+
+
+
+/*********************************************************
+ COMPLEMENTOS DE HOMOLOGAÇÃO — CONTROLE ADMINISTRATIVO
+*********************************************************/
+function rpFNotificarPendenciaSegura_(p,pendencia) {
+  try { return rpFNotificarPendencia_(p,pendencia); }
+  catch(e) { Logger.log("Notificação pendente: "+String(e.message||e));return false; }
+}
+
+function rpFEncerrarProcesso_() {
+  return rpFLock_(() => {
+    rpFExigirEscrita_();
+    const cfg=rpFConfig_();
+    if (cfg.etapa!==3 || rpFFila_(3).length) return rpFErro_("ETAPAS_PENDENTES");
+    alterarConfig_("PROCESSO_ATIVO","NAO");
+    return {ok:true,processoAtivo:false,vagasAlteradas:false};
+  });
+}
+
+function rpFResumoHomologacao() {
+  const cfg=rpFConfig_();
+  const participantes=rpFParticipantes_();
+  const status={};
+  participantes.forEach(p=>{const s=rpFTexto_(p.situacao);status[s]=(status[s]||0)+1;});
+  const resultado={ok:true,ambiente:"TESTE",etapa:cfg.etapa,processoAtivo:cfg.ativo,
+    total:participantes.length,porSituacao:status,
+    proximo:rpFProximo_(cfg.etapa)?.codigo||null,
+    operacoesPendentes:rpFOpsPendentes_(),
+    gravacaoAtiva:RP_FINAL.GRAVACAO_ATIVA,emailAtivo:RP_FINAL.EMAIL_ATIVO};
+  Logger.log(JSON.stringify(resultado,null,2));return resultado;
+}
+
+function rpConsultarCpfInscrito_(cpfInformado) {
+  try {
+    const cpf = rpFCpf_(cpfInformado);
+
+    if (!/^\d{11}$/.test(cpf)) {
+      return {
+        ok: false,
+        motivo: "CPF_INVALIDO",
+        mensagem: "CPF incorreto."
+      };
+    }
+
+    // Utiliza a planilha de homologação
+    // e a leitura dos inscritos já existentes.
+    rpFPlanilha_();
+
+    const professor = rpFPorCpf_(cpf);
+
+    if (!professor) {
+      return {
+        ok: false,
+        motivo: "NAO_INSCRITO",
+        mensagem:
+          "Inscrição não realizada para o Concurso de Remoção."
+      };
+    }
+
+    return {
+      ok: true,
+      inscrito: true,
+      mensagem: "Inscrição localizada."
+    };
+
+  } catch (erro) {
+    return {
+      ok: false,
+      motivo: "ERRO_CONSULTA",
+      mensagem:
+        "Não foi possível verificar a inscrição. Tente novamente."
+    };
+  }
+}
+
+
+function rpConsultarEscolhaInicial_(cpfInformado) {
+  try {
+    const cpf = rpFCpf_(cpfInformado);
+
+    if (!/^\d{11}$/.test(cpf)) {
+      return {
+        ok: false,
+        motivo: "CPF_INVALIDO",
+        mensagem: "CPF incorreto."
+      };
+    }
+
+    rpFPlanilha_();
+
+    const professor = rpFPorCpf_(cpf);
+
+    if (!professor) {
+      return {
+        ok: false,
+        motivo: "NAO_INSCRITO",
+        mensagem:
+          "Inscrição não realizada para o Concurso de Remoção."
+      };
+    }
+
+    const config = rpFConfig_();
+    const finalizado = rpFFinalizado_(professor);
+
+    const situacao = String(
+      professor.situacao || ""
+    ).trim().toUpperCase();
+
+    const lotacaoOriginal = String(
+      professor.lotacaoOriginal || ""
+    ).trim();
+
+    const lotacaoAtual = String(
+      professor.lotacaoAtual || ""
+    ).trim();
+
+    const escolaEscolhida = String(
+      professor.escolaEscolhida || ""
+    ).trim();
+
+    const removido =
+      situacao === "FINALIZADO_REMOCAO" ||
+      situacao === "CONFIRMADO";
+
+    return {
+      ok: true,
+      inscrito: true,
+      finalizado: finalizado,
+      removido: removido,
+
+      candidato: {
+        codigo: Number(professor.codigo),
+        nome: professor.nome,
+        lotacaoOriginal: lotacaoOriginal,
+        lotacaoAtual: lotacaoAtual,
+        escolaEscolhida: escolaEscolhida,
+        etapa: Number(professor.etapa),
+        situacao: situacao,
+        tipoDecisao: professor.tipoDecisao || ""
+      },
+
+      processoAtivo: config.ativo,
+      etapaAtiva: config.etapa,
+
+vagas: (
+  finalizado ||
+  !config.ativo ||
+  Number(professor.etapa) !== Number(config.etapa)
+)
+  ? []
+  : rpFVagasDisponiveis_(lotacaoAtual),
+
+
+      mensagem: removido
+        ? "Sua remoção foi concluída com sucesso."
+        : finalizado
+          ? "Sua participação na remoção foi encerrada."
+          : escolaEscolhida
+            ? "Sua preferência está registrada. Aguarde o processamento pela ordem de classificação."
+            : "Inscrição localizada. Selecione a instituição desejada."
+    };
+
+  } catch (erro) {
+    console.error(
+      "Erro na consulta inicial:",
+      erro
+    );
+
+    return {
+      ok: false,
+      motivo: "ERRO_CONSULTA",
+      mensagem: String(
+        erro.message || erro
+      )
+    };
+  }
+}
+
+function ativarHomologacaoRemocao() {
+  rpFPlanilha_();
+
+  rpFProps_().setProperty(
+    "RP_HOMOLOGACAO_SEM_CODIGO",
+    "SIM"
+  );
+
+  Logger.log(
+    "Homologação sem código ativada na cópia."
+  );
+}
+
+function encerrarHomologacaoRemocao() {
+  rpFProps_().deleteProperty(
+    "RP_HOMOLOGACAO_SEM_CODIGO"
+  );
+
+  Logger.log(
+    "Homologação sem código encerrada."
+  );
+}
+
