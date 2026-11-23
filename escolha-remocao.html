@@ -1052,18 +1052,17 @@ if (aguardandoProximaEtapa) {
     "info"
   );
 
-} else if (candidato.escolaEscolhida) {
+} else if (situacaoInicial === "NOVA_ESCOLHA") {
 
   msg(
     "stateMsg",
-    "Preferência registrada: " +
-    candidato.escolaEscolhida +
-    "\n\nAguarde o processamento conforme " +
-    "a ordem de classificação.",
+    "NOVA ESCOLHA NECESSÁRIA\n\n" +
+    "A instituição indicada anteriormente não possui mais vagas disponíveis.\n\n" +
+    "Sua lotação atual permanece inalterada.\n\n" +
+    "Você pode registrar uma nova preferência, " +
+    "manter sua lotação ou avançar para a próxima etapa.",
     "info"
-  );
-
-} else {
+  );else {
 
   msg(
     "stateMsg",
