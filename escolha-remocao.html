@@ -400,6 +400,13 @@ footer {
       Atualizar situação
     </button>
 
+<button
+  type="button"
+  class="primary"
+  id="btnPrintStatus">
+  Imprimir comprovante
+</button>
+
     <button
       type="button"
       class="secondary"
@@ -1087,6 +1094,300 @@ $("btnFinish").onclick = finalizar;
 $("btnPrint").onclick = () => {
   window.print();
 };
+  
+/* COMPROVANTE DE SITUAÇÃO DA REMOÇÃO */
+
+$("btnPrintStatus").addEventListener("click", () => {
+  if (!dadosAtuais || !dadosAtuais.candidato) {
+    alert("Consulte o CPF antes de imprimir.");
+    return;
+  }
+
+  const c = dadosAtuais.candidato;
+
+  const situacao = String(
+    c.situacao || ""
+  ).trim().toUpperCase();
+
+  const descricoes = {
+    FINALIZADO_REMOCAO: "REMOÇÃO CONFIRMADA",
+    CONFIRMADO: "REMOÇÃO CONFIRMADA",
+    FINALIZADO_PERMANENCIA: "PERMANÊNCIA CONFIRMADA",
+    AGUARDANDO_ETAPA: "AGUARDANDO PRÓXIMA ETAPA",
+    NOVA_ESCOLHA: "NOVA ESCOLHA NECESSÁRIA",
+    AGUARDANDO_VEZ: "PREFERÊNCIA REGISTRADA",
+    PENDENTE: "AGUARDANDO DECISÃO"
+  };
+
+  const status =
+    descricoes[situacao] ||
+    situacao.replaceAll("_", " ");
+
+  const escapeHtml = valor =>
+    String(valor ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  const data = new Date().toLocaleString("pt-BR");
+
+  const nome = escapeHtml(c.nome);
+  const codigo = escapeHtml(c.codigo);
+  const lotacao = escapeHtml(c.lotacaoAtual);
+  const etapa = escapeHtml(c.etapa);
+  const situacaoTexto = escapeHtml(status);
+  const preferencia = escapeHtml(
+    c.escolaEscolhida || c.preferencia || ""
+  );
+
+  const mostrarDestino =
+    situacao === "AGUARDANDO_VEZ" ||
+    situacao === "NOVA_ESCOLHA";
+
+  const destinoHtml = mostrarDestino && preferencia
+    ? `<tr>
+         <th>Instituição indicada</th>
+         <td>${preferencia}</td>
+       </tr>`
+    : "";
+
+  const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Comprovante de Remoção</title>
+
+<style>
+@page {
+  size: A4;
+  margin: 18mm;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  color: #172b45;
+  margin: 0;
+  font-size: 12px;
+}
+
+.cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid #173b65;
+  padding-bottom: 18px;
+  gap: 15px;
+}
+
+.logo {
+  width: 105px;
+  height: 85px;
+  object-fit: contain;
+}
+
+.instituicao {
+  flex: 1;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.instituicao strong {
+  font-size: 14px;
+}
+
+.titulo {
+  text-align: center;
+  margin: 35px 0 25px;
+}
+
+.titulo h2 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.titulo p {
+  color: #52647a;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+th, td {
+  border: 1px solid #cbd5e1;
+  padding: 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: #f1f5f9;
+  width: 35%;
+}
+
+.situacao {
+  margin-top: 25px;
+  border: 1px solid #173b65;
+  padding: 17px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.observacao {
+  margin-top: 25px;
+  line-height: 1.7;
+  text-align: justify;
+}
+
+.assinatura {
+  margin: 80px auto 0;
+  width: 75%;
+  text-align: center;
+  border-top: 1px solid #333;
+  padding-top: 10px;
+}
+
+.rodape {
+  margin-top: 65px;
+  padding-top: 12px;
+  border-top: 1px solid #ddd;
+  text-align: center;
+  font-size: 10px;
+  color: #64748b;
+}
+
+@media print {
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="cabecalho">
+  <img class="logo"
+       src="logo-prefeitura.png"
+       alt="Prefeitura de Contenda">
+
+  <div class="instituicao">
+    <strong>PREFEITURA MUNICIPAL DE CONTENDA</strong>
+    <div>SECRETARIA MUNICIPAL DE EDUCAÇÃO,</div>
+    <div>CULTURA, ESPORTE E TURISMO</div>
+    <div>CONTENDA – PARANÁ</div>
+  </div>
+
+  <img class="logo"
+       src="logo-secretaria.png"
+       alt="Secretaria Municipal de Educação">
+</div>
+
+<div class="titulo">
+  <h2>COMPROVANTE DE SITUAÇÃO</h2>
+  <p>Concurso de Remoção Progressiva – 2026</p>
+</div>
+
+<p>
+  A Secretaria Municipal de Educação de Contenda
+  apresenta o registro da situação do participante
+  no Concurso de Remoção Progressiva.
+</p>
+
+<table>
+  <tr>
+    <th>Nome do professor</th>
+    <td>${nome}</td>
+  </tr>
+
+  <tr>
+    <th>Classificação</th>
+    <td>${codigo}</td>
+  </tr>
+
+  <tr>
+    <th>Etapa</th>
+    <td>${etapa}</td>
+  </tr>
+
+  <tr>
+    <th>Lotação atual</th>
+    <td>${lotacao}</td>
+  </tr>
+
+  ${destinoHtml}
+
+  <tr>
+    <th>Situação registrada</th>
+    <td>${situacaoTexto}</td>
+  </tr>
+
+  <tr>
+    <th>Data de emissão</th>
+    <td>${escapeHtml(data)}</td>
+  </tr>
+</table>
+
+<div class="situacao">
+  ${situacaoTexto}
+</div>
+
+<div class="observacao">
+  Este comprovante apresenta a situação registrada
+  no sistema do Concurso de Remoção Progressiva
+  na data de sua emissão.
+
+  A indicação de preferência não constitui,
+  por si só, confirmação de transferência.
+  A efetivação da remoção depende da situação
+  registrada no sistema e das regras do concurso.
+</div>
+
+<div class="assinatura">
+  Secretaria Municipal de Educação<br>
+  Cultura, Esporte e Turismo<br>
+  Município de Contenda – PR
+</div>
+
+<div class="rodape">
+  Documento emitido pelo Sistema de Escolha
+  de Remoção – Contenda/PR
+</div>
+
+</body>
+</html>
+`;
+
+  const janela = window.open(
+    "",
+    "_blank",
+    "width=900,height=850"
+  );
+
+  if (!janela) {
+    alert(
+      "O navegador bloqueou a janela de impressão. " +
+      "Permita pop-ups para este site."
+    );
+    return;
+  }
+
+  janela.document.open();
+  janela.document.write(html);
+  janela.document.close();
+
+  janela.addEventListener("load", () => {
+    janela.focus();
+    janela.print();
+  });
+});
 </script>
 
 </body>
